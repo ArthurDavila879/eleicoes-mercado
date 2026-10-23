@@ -142,6 +142,10 @@ de 26/10 em diante. Os números atualizados estão no dashboard (`marts.resultad
   antecipação (pesquisas de véspera, por exemplo) ou outros fatores; o desenho do estudo não
   separa essas explicações.
 
+**Pré-registro do 2º turno:** antes da votação, o plano de análise do 2º turno (janelas,
+modelos, testes, nível de significância e testes adicionais) foi fixado em
+[`PRE_REGISTRO.md`](PRE_REGISTRO.md) e congelado na tag `pre-registro-2turno`.
+
 ## Limitações
 
 - **Poucos eventos.** Com dois eventos (1º e 2º turno), não há poder estatístico para
@@ -230,5 +234,6 @@ workflows, então a coleta automática não aciona o workflow de testes a cada h
 ├── tests/                     # pytest (mocks + integração dbt com dados sintéticos)
 ├── .github/workflows/         # coleta.yml, testes.yml
 ├── DECISOES.md                # decisões de projeto
+├── PRE_REGISTRO.md            # plano de análise do 2º turno, fixado antes do resultado
 └── Dockerfile, docker-compose.yml
 ```

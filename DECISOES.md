@@ -127,3 +127,19 @@ Decisões tomadas de forma autônoma durante a construção do projeto, com a ju
   volta ao `main` atualizado e mescla pelas chaves de cada fonte (`src/ingestao/mesclar.py`,
   mesma deduplicação de `salvar_incremental`, a coleta mais nova vence), com até 5 tentativas
   de push. Não refaz a coleta (o GDELT leva minutos por causa do limite de 1 requisição/5 s).
+
+## Pré-registro do 2º turno (Fase 0, 23/10/2026)
+- **`PRE_REGISTRO.md` congelado na tag `pre-registro-2turno`** antes da votação (25/10/2026,
+  17h): fixa evento, ativos, janelas, modelos, testes, nível de significância (5% bicaudal) e os
+  testes adicionais das fases 1–2. Hipóteses bicaudais, sem direção e sem candidatos.
+- **Família principal com ajuste de Holm:** janela diária [-1,+3] dos seis ativos de fontes
+  distintas; o dólar do BCB é checagem da mesma hipótese do `BRL=X` e fica fora.
+- **BMP com N = 1:** a versão original usa a dispersão entre empresas, indefinida para um único
+  ativo por evento; foi pré-registrada a adaptação em série temporal (dispersão dos SAR dentro
+  da janela, L − 1 gl, só com L ≥ 3).
+- **Placebo:** pseudodia 0 restrito ao 1º pregão após dia sem pregão (e pseudobarra 0 à 1ª
+  barra do pregão), porque o dia 0 real inclui um fim de semana; histórico diário desde
+  01/01/2023 para haver datas suficientes (o 2026 sozinho daria só ~70 datas elegíveis); se
+  houver menos de N elegíveis, usa todas. Versão sem restrição como sensibilidade.
+- **Volatilidade e volume anormais** em log, padronizados pela estimação; **Tesouro**: LTN
+  ~3 anos e NTN-B Principal ~10 anos, taxa de compra da manhã, média constante.
