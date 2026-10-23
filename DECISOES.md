@@ -114,3 +114,8 @@ Decisões tomadas de forma autônoma durante a construção do projeto, com a ju
 - **GDELT só descritivo:** tom com 0 artigos vira nulo (indefinido). Os dados do GDELT
   vieram ralos e com lacunas (dias faltando, total monitorado oscilando de ~4 mil a ~170 mil
   artigos/dia), por isso não entram no teste estatístico.
+- **Conflito de Parquet na coleta da CI:** o git não mescla binários, então um push no `main`
+  durante a coleta fazia o `git pull --rebase` falhar. A CI agora guarda a própria coleta,
+  volta ao `main` atualizado e mescla pelas chaves de cada fonte (`src/ingestao/mesclar.py`,
+  mesma deduplicação de `salvar_incremental`, a coleta mais nova vence), com até 5 tentativas
+  de push. Não refaz a coleta (o GDELT leva minutos por causa do limite de 1 requisição/5 s).

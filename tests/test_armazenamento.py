@@ -52,3 +52,18 @@ def test_ultimo_registro_e_inicio_incremental(dir_bruto):
     assert armazenamento.inicio_incremental(ultimos["x"], 5) == date(2026, 3, 15)
     assert armazenamento.inicio_incremental(None, 5) == date(2026, 1, 1)
     assert armazenamento.inicio_incremental(datetime(2026, 1, 2), 5) == date(2026, 1, 1)
+
+
+def test_mesclar_une_coleta_ao_remoto_pela_chave(tmp_path):
+    from src.ingestao import mesclar
+
+    remoto, coletado = tmp_path / "remoto", tmp_path / "coletado"
+    base = pd.DataFrame({"serie_nome": "dolar_venda", "data": pd.to_datetime(["2026-10-21"]), "valor": [5.0]})
+    armazenamento.salvar_incremental(base, "bcb_sgs", ["serie_nome", "data"], "data", remoto)
+    nova = pd.DataFrame({"serie_nome": "dolar_venda", "data": pd.to_datetime(["2026-10-22", "2026-10-23"]),
+                         "valor": [5.1, 5.2]})
+    armazenamento.salvar_incremental(nova, "bcb_sgs", ["serie_nome", "data"], "data", coletado)
+
+    assert mesclar.mesclar(coletado, remoto) == {"bcb_sgs": 2}
+    assert armazenamento.ler_fonte("bcb_sgs", remoto)["valor"].tolist() == [5.0, 5.1, 5.2]
+    assert mesclar.mesclar(coletado, remoto) == {"bcb_sgs": 0}  # idempotente

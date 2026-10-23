@@ -40,32 +40,28 @@ jobs:
       - name: Coleta incremental
         run: python -m src.ingestao
 
+      # Parquet é binário: o git não mescla se o main mudou durante a coleta.
+      # Guardamos a coleta, voltamos ao main atualizado e mesclamos pelas chaves
+      # (sem refazer a coleta, que leva minutos por causa do limite do GDELT).
       - name: Commitar Parquet novos
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/bruto
-          if git diff --cached --quiet; then
-            echo "Sem dados novos."
-            exit 0
-          fi
-          git commit -m "dados: coleta automática $(date -u +'%Y-%m-%dT%H:%MZ')"
-          # Se alguém publicou Parquet no meio do caminho, o rebase de arquivo binário conflita:
-          # nesse caso parte do remoto e refaz a coleta (é incremental e idempotente)
-          for tentativa in 1 2 3; do
-            if git pull --rebase && git push; then
-              exit 0
-            fi
-            echo "Conflito no push (tentativa $tentativa): refazendo a coleta sobre o remoto."
-            git rebase --abort 2>/dev/null || true
+          cp -r data/bruto "$RUNNER_TEMP/bruto_coletado"
+          for tentativa in 1 2 3 4 5; do
             git fetch origin main
             git reset --hard origin/main
-            python -m src.ingestao
+            python -m src.ingestao.mesclar "$RUNNER_TEMP/bruto_coletado"
             git add data/bruto
             if git diff --cached --quiet; then
-              echo "Sem dados novos após refazer."
+              echo "Sem dados novos."
               exit 0
             fi
             git commit -m "dados: coleta automática $(date -u +'%Y-%m-%dT%H:%MZ')"
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+            echo "Push recusado (tentativa $tentativa); mesclando de novo sobre o remoto."
+            sleep $((tentativa * 10))
           done
           exit 1
