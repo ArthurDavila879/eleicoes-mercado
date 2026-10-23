@@ -1,4 +1,4 @@
-"""Coleta incremental: ``python -m src.ingestao [--carregar]``."""
+"""Coleta incremental: ``python -m src.ingestao [--fontes bcb_sgs yahoo gdelt] [--carregar]``."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ import logging
 import sys
 import warnings
 
-from src.ingestao import carga, coletar_tudo
+from src.ingestao import FONTES, carga, coletar_tudo
 
 
 def configurar_saida() -> None:
@@ -23,11 +23,13 @@ def configurar_saida() -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Coleta incremental das fontes de dados")
+    parser.add_argument("--fontes", nargs="+", choices=FONTES, default=list(FONTES),
+                        help="fontes a coletar (padrão: todas)")
     parser.add_argument("--carregar", action="store_true", help="também carrega no DuckDB")
     args = parser.parse_args()
     configurar_saida()
 
-    resultado = coletar_tudo()
+    resultado = coletar_tudo(fontes=args.fontes)
     print("Linhas novas por fonte:", resultado)
     if args.carregar:
         print("Linhas no DuckDB:", carga.carregar())

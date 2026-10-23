@@ -37,8 +37,15 @@ jobs:
       - name: Validar eventos
         run: python -m src.eventos.validacao
 
+      # O GDELT é diário e limita requisições por IP: só entra na rodada noturna
+      # (e na manual). As rodadas de hora em hora coletam só BCB e Yahoo.
       - name: Coleta incremental
-        run: python -m src.ingestao
+        run: |
+          if [ "${{ github.event.schedule }}" = "17 13-21 * * 1-5" ]; then
+            python -m src.ingestao --fontes bcb_sgs yahoo
+          else
+            python -m src.ingestao
+          fi
 
       # Parquet é binário: o git não mescla se o main mudou durante a coleta.
       # Guardamos a coleta, voltamos ao main atualizado e mesclamos pelas chaves

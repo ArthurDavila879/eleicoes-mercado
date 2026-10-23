@@ -9,8 +9,16 @@ from pathlib import Path
 log = logging.getLogger(__name__)
 
 
-def coletar_tudo(dir_bruto: Path | None = None, hoje: date | None = None) -> dict[str, object]:
-    """Roda todas as coletas incrementais. Uma fonte com erro não impede as demais.
+FONTES = ("bcb_sgs", "yahoo", "gdelt")
+
+
+def coletar_tudo(
+    dir_bruto: Path | None = None,
+    hoje: date | None = None,
+    fontes: tuple[str, ...] | list[str] = FONTES,
+) -> dict[str, object]:
+    """Roda as coletas incrementais das ``fontes`` pedidas (todas, por padrão).
+    Uma fonte com erro não impede as demais.
 
     Retorna, por fonte, o nº de linhas novas ou a mensagem de erro.
     Levanta ``RuntimeError`` se TODAS as fontes falharem.
@@ -19,7 +27,12 @@ def coletar_tudo(dir_bruto: Path | None = None, hoje: date | None = None) -> dic
 
     resultado: dict[str, object] = {}
     coletores = {"bcb_sgs": bcb.coletar, "yahoo": yahoo.coletar, "gdelt": gdelt.coletar}
+    desconhecidas = set(fontes) - set(coletores)
+    if desconhecidas:
+        raise ValueError(f"Fontes desconhecidas: {sorted(desconhecidas)}")
     for nome, coletor in coletores.items():
+        if nome not in fontes:
+            continue
         try:
             resultado[nome] = coletor(dir_bruto=dir_bruto, hoje=hoje)
         except Exception as erro:

@@ -38,8 +38,16 @@ Decisões tomadas de forma autônoma durante a construção do projeto, com a ju
   volume relativo à média do próprio candidato.
 - **GDELT — histórico:** a API DOC só pesquisa ~3 meses para trás. A primeira coleta começa em
   `hoje − 89 dias` (não em 01/01/2026); a coleta automática acumula o restante daqui em diante.
-- **GDELT — limite de requisições:** 6 s entre chamadas e recuo exponencial. Se o tom falhar
-  mas o volume vier, o volume é salvo e o tom já existente é preservado.
+- **GDELT — limite de requisições:** 10 s entre chamadas; após uma recusa, recuo exponencial de
+  30 s, 60 s e 120 s (sem espera depois da última tentativa). Se o tom falhar mas o volume vier,
+  o volume é salvo e o tom já existente é preservado.
+- **GDELT — recusas mesmo no ritmo pedido:** na prática a API devolve "Please limit requests to
+  one every 5 seconds" até na primeira chamada após muito tempo parada (limite por IP, instável;
+  provavelmente pior nos IPs compartilhados dos runners do GitHub). Por isso: (1) a falha de um
+  candidato é registrada e pulada — antes abortava a fonte inteira e o candidato seguinte nem era
+  tentado; a sobreposição de 7 dias recupera os dias perdidos; a fonte só falha se todos os
+  candidatos falharem; (2) a CI coleta o GDELT só na rodada noturna (e na manual): o dado é
+  diário, e as rodadas de hora em hora (`--fontes bcb_sgs yahoo`) só gastavam a cota.
 
 ## Eventos (Etapa 4)
 - **Só dois eventos, ambos com data e hora oficiais:** o encerramento da votação e início da

@@ -7,7 +7,10 @@ Documentação: https://blog.gdeltproject.org/gdelt-doc-2-0-api-debuts/
 - ``mode=timelinevolraw``: nº de artigos que casam com a consulta (``value``) e o total
   de artigos monitorados no período (``norm``).
 - ``mode=timelinetone``: tom médio dos artigos que casam com a consulta.
-A API só pesquisa os últimos ~3 meses e pede no máximo 1 requisição a cada 5 segundos.
+A API só pesquisa os últimos ~3 meses e pede no máximo 1 requisição a cada 5 segundos;
+na prática recusa chamadas mesmo nesse ritmo (limite por IP, instável), por isso o
+intervalo é folgado, o recuo após recusa é longo e a falha de um candidato não
+impede a coleta dos demais.
 """
 
 from __future__ import annotations
@@ -28,7 +31,8 @@ log = logging.getLogger(__name__)
 FONTE = "gdelt_diario"
 URL_DOC = "https://api.gdeltproject.org/api/v2/doc/doc"
 COLUNAS = ["candidato", "data", "consulta", "n_artigos", "total_monitorado", "tom_medio"]
-INTERVALO_MIN_SEGUNDOS = 6.0
+INTERVALO_MIN_SEGUNDOS = 10.0
+RECUO_INICIAL_SEGUNDOS = 30.0  # espera após a 1ª recusa; dobra a cada nova tentativa
 
 
 class LimiteRequisicoes(RuntimeError):
@@ -51,7 +55,7 @@ def _pedir_timeline(
     inicio: date,
     fim: date,
     tentativas: int,
-    espera: float,
+    recuo: float,
 ) -> list[dict]:
     params = {
         "query": consulta,
@@ -62,12 +66,13 @@ def _pedir_timeline(
         "enddatetime": fim.strftime("%Y%m%d235959"),
     }
     for tentativa in range(1, tentativas + 1):
+        if tentativa > 1:
+            time.sleep(recuo * 2 ** (tentativa - 2))  # recuo exponencial: 30 s, 60 s, 120 s...
         try:
             resp = sessao.get(URL_DOC, params=params, timeout=60,
                               headers={"User-Agent": "eleicoes-mercado/1.0 (pesquisa academica)"})
         except requests.RequestException as erro:
             log.warning("GDELT %s: %s (tentativa %s)", modo, erro, tentativa)
-            time.sleep(espera * 2 ** tentativa)
             continue
         texto = resp.text.strip()
         if resp.status_code == 200 and texto.startswith("{"):
@@ -78,7 +83,6 @@ def _pedir_timeline(
             return []  # consulta sem resultados
         log.warning("GDELT %s (%s): resposta inválida/limite (tentativa %s): %s",
                     modo, consulta, tentativa, texto[:120])
-        time.sleep(espera * 2 ** tentativa)  # recuo exponencial
     raise LimiteRequisicoes(f"GDELT não respondeu JSON para {modo} {consulta!r}")
 
 
@@ -94,14 +98,15 @@ def coletar_candidato(
     sessao: requests.Session | None = None,
     tentativas: int = 4,
     espera: float = INTERVALO_MIN_SEGUNDOS,
+    recuo: float = RECUO_INICIAL_SEGUNDOS,
 ) -> pd.DataFrame:
     """Volume e tom diários de um candidato entre ``inicio`` e ``fim``."""
     sessao = sessao or requests.Session()
     consulta = montar_consulta(candidato)
-    volume = _pedir_timeline(sessao, consulta, "timelinevolraw", inicio, fim, tentativas, espera)
+    volume = _pedir_timeline(sessao, consulta, "timelinevolraw", inicio, fim, tentativas, recuo)
     time.sleep(espera)  # respeita o limite de 1 requisição a cada 5 s
     try:
-        tom = _pedir_timeline(sessao, consulta, "timelinetone", inicio, fim, tentativas, espera)
+        tom = _pedir_timeline(sessao, consulta, "timelinetone", inicio, fim, tentativas, recuo)
     except LimiteRequisicoes:
         if not volume:
             raise
@@ -153,23 +158,36 @@ def coletar(
     sessao: requests.Session | None = None,
     espera: float = INTERVALO_MIN_SEGUNDOS,
 ) -> int:
-    """Coleta incremental para todos os candidatos do 2º turno. Retorna linhas novas."""
+    """Coleta incremental para todos os candidatos do 2º turno. Retorna linhas novas.
+
+    Um candidato que falhar (ex.: limite de requisições) é registrado e pulado; a
+    sobreposição da próxima coleta recupera os dias perdidos. Só levanta erro se todos
+    os candidatos falharem.
+    """
     hoje = hoje or date.today()
     minimo = max(config.DATA_INICIO, hoje - timedelta(days=config.JANELA_MAX_GDELT_DIAS))
     ultimos = armazenamento.ultimo_registro(FONTE, "candidato", "data", dir_bruto)
     sessao = sessao or requests.Session()
     total = 0
+    falhas: dict[str, str] = {}
     for i, candidato in enumerate(config.CANDIDATOS_2_TURNO):
         if i:
             time.sleep(espera)
         inicio = armazenamento.inicio_incremental(
             ultimos.get(candidato), config.SOBREPOSICAO_DIAS_GDELT, minimo=minimo
         )
-        df = coletar_candidato(candidato, inicio, hoje, sessao=sessao, espera=espera)
+        try:
+            df = coletar_candidato(candidato, inicio, hoje, sessao=sessao, espera=espera)
+        except LimiteRequisicoes as erro:
+            log.error("GDELT %s: coleta pulada nesta rodada: %s", candidato, erro)
+            falhas[candidato] = str(erro)
+            continue
         df = _preservar_tom_existente(df, dir_bruto)
         n = armazenamento.salvar_incremental(
             df, FONTE, chaves=["candidato", "data"], col_tempo="data", dir_bruto=dir_bruto
         )
         log.info("GDELT %s: %s dias baixados, %s novos", candidato, len(df), n)
         total += n
+    if len(falhas) == len(config.CANDIDATOS_2_TURNO):
+        raise LimiteRequisicoes(f"GDELT falhou para todos os candidatos: {falhas}")
     return total

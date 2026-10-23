@@ -80,3 +80,35 @@ def test_tom_indisponivel_salva_volume_e_preserva_tom_antigo(dir_bruto):
     gdelt.coletar(dir_bruto, hoje=date(2026, 10, 4), sessao=SessaoFalsa(sem_tom), espera=0)
     lido = armazenamento.ler_fonte("gdelt_diario", dir_bruto)
     assert lido["tom_medio"].notna().all()
+
+
+def test_recuo_cresce_apos_recusa_e_nao_espera_depois_da_ultima(monkeypatch):
+    import time
+
+    esperas = []
+    monkeypatch.setattr(time, "sleep", esperas.append)
+    sessao = SessaoFalsa(lambda *_: RespostaFalsa(429, texto="Please limit requests"))
+    with pytest.raises(gdelt.LimiteRequisicoes):
+        gdelt.coletar_candidato("Lula", date(2026, 10, 3), date(2026, 10, 4), sessao=sessao,
+                                espera=0, recuo=30)
+    assert esperas == [30, 60, 120]
+
+
+def test_falha_de_um_candidato_nao_impede_os_demais(dir_bruto):
+    primeiro, segundo = config.CANDIDATOS_2_TURNO[:2]
+
+    def bloqueia_primeiro(url, params):
+        if gdelt.montar_consulta(primeiro) == params["query"]:
+            return RespostaFalsa(429, texto="Please limit requests")
+        return _responder(url, params)
+
+    n = gdelt.coletar(dir_bruto, hoje=date(2026, 10, 4), sessao=SessaoFalsa(bloqueia_primeiro), espera=0)
+    assert n == 2
+    lido = armazenamento.ler_fonte("gdelt_diario", dir_bruto)
+    assert set(lido["candidato"]) == {segundo}
+
+
+def test_falha_de_todos_os_candidatos_levanta_erro(dir_bruto):
+    sessao = SessaoFalsa(lambda *_: RespostaFalsa(429, texto="Please limit requests"))
+    with pytest.raises(gdelt.LimiteRequisicoes, match="todos os candidatos"):
+        gdelt.coletar(dir_bruto, hoje=date(2026, 10, 4), sessao=sessao, espera=0)
