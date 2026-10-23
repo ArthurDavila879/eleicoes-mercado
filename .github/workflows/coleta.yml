@@ -1,0 +1,53 @@
+name: Coleta de dados
+
+# Horários em UTC. America/Sao_Paulo = UTC-3 (sem horário de verão desde 2019).
+# Pregão da B3: ~10h às 18h de Brasília = 13h às 21h UTC.
+on:
+  schedule:
+    - cron: "5 13-21 * * 1-5"   # de hora em hora (minuto 5) em dias úteis, 10:05–18:05 BRT
+    - cron: "30 1 * * *"        # uma vez à noite, todos os dias: 22:30 BRT
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# Evita duas coletas simultâneas disputando o push
+concurrency:
+  group: coleta
+  cancel-in-progress: false
+
+jobs:
+  coletar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      TZ: America/Sao_Paulo
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Instalar dependências
+        run: pip install -r requirements.txt
+
+      - name: Validar eventos
+        run: python -m src.eventos.validacao
+
+      - name: Coleta incremental
+        run: python -m src.ingestao
+
+      - name: Commitar Parquet novos
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/bruto
+          if git diff --cached --quiet; then
+            echo "Sem dados novos."
+            exit 0
+          fi
+          git commit -m "dados: coleta automática $(date -u +'%Y-%m-%dT%H:%MZ')"
+          git pull --rebase
+          git push
