@@ -2,6 +2,7 @@ services:
   # Coleta (incremental) + carga no DuckDB + dbt build
   pipeline:
     build: .
+    image: eleicoes-mercado:latest
     command: ["python", "-m", "src.pipeline"]
     volumes:
       - ./data:/app/data
@@ -10,12 +11,14 @@ services:
   # Roda a suíte de testes (pytest)
   testes:
     build: .
+    image: eleicoes-mercado:latest
     command: ["pytest", "-q"]
     profiles: ["testes"]
 
   # Dashboard Streamlit em http://localhost:8501
   app:
     build: .
+    image: eleicoes-mercado:latest
     ports:
       - "8501:8501"
     volumes:
