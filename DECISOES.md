@@ -61,3 +61,44 @@ Decisões tomadas de forma autônoma durante a construção do projeto, com a ju
   1º turno ainda não se sabia quem iria ao 2º turno).
 - **Validação:** `data_hora` em ISO 8601 com fuso obrigatório, tipo na lista fechada,
   descrição não vazia, URL http(s), sem duplicatas. Roda no pytest, na carga e no workflow.
+
+## Análise (Etapa 5)
+- **Correção de data das moedas no Yahoo diário (achado na carga real):** para tickers `=X`, o
+  candle com data D tem fechamento ≈ abertura ≈ cotação perto de 00h em Londres, ou seja, o
+  fechamento do pregão anterior. Na carga real, a queda de ~4,5% do dólar após o 1º turno
+  aparecia em 06/10 no Yahoo e em 05/10 no BCB e nas barras de 1h. Cada valor diário de
+  moeda é atribuído à data útil anterior da própria série (no `stg_precos_diarios`). Validação:
+  a correlação dos retornos com o dólar do BCB sobe de 0,22 para 0,69, e a correlação com um
+  fechamento às 17h de Brasília calculado a partir das barras de 1h é 0,96. (O BCB/SGS série 1
+  é a PTAX, apurada por volta das 13h, daí a correlação menor que 1.) A correção vale
+  igualmente para o real e para as moedas de controle.
+- **Dia 0 diário:** 1º pregão do ativo na data do evento; se o evento é a partir das 17h
+  (fechamento da B3) ou fora de pregão, o pregão seguinte. **Barra 0 horária:** 1ª barra de 1h
+  que começa no instante do evento ou depois.
+- **Janelas em observações do próprio ativo** (pregões/barras), não em tempo de relógio:
+  "[-2h,+6h]" = 2 barras antes e 6 barras (0…+5) depois do evento. Num domingo às 17h, as barras
+  -2 e -1 são as últimas da sexta e a barra 0 é a primeira do pregão seguinte, cujo retorno
+  inclui o fim de semana inteiro (é aí que a reação aparece).
+- **Ibovespa com média constante:** não dá para estimar o modelo de mercado do Ibovespa contra
+  ele mesmo e nenhum índice mais amplo (ex.: MSCI Emergentes) estava na lista de ativos.
+- **Dólar do BCB também analisado** (ativo `BCB_DOLAR`, só diário) com o mesmo método do
+  `BRL=X`, como checagem de robustez entre fontes.
+- **Moedas de controle:** média simples dos log-retornos disponíveis no mesmo dia/hora,
+  exigindo pelo menos 2 das 4 (as barras horárias das moedas têm lacunas de madrugada).
+- **Janelas de estimação:** [-120,-11] pregões (mín. 60) e [-300,-11] barras (mín. 150), com o
+  intervalo de 10 observações entre a estimação e o evento. Observações de estimação que
+  caem na janela de **outro** evento são excluídas (relevante para o 2º turno, cuja janela de
+  estimação contém o 1º turno).
+- **Inferência:** `t = CAR/(σ̂√L)`; σ̂² = SQR/(n−2) no modelo de mercado e variância amostral
+  nos demais; p-valor bicaudal pela t de Student. Não usei correção de erro de estimação nem
+  testes não paramétricos (próximos passos).
+- **Janelas parciais:** p-valor calculado se houver ≥ metade das observações esperadas; o
+  status `janela_parcial` continua visível (acontece com moedas na madrugada de domingo).
+- **p-valor num modelo Python do dbt** (scipy), porque o DuckDB não tem a distribuição t; o
+  resto é SQL. Macros compartilhadas evitam duplicar a lógica entre diário e horário.
+- **Schemas fixos** (`staging`, `intermediario`, `marts`, `referencia`) via `generate_schema_name`.
+- **Teste de integração com dados sintéticos** (choque conhecido injetado): garante que o
+  pipeline recupera o efeito com o sinal, a magnitude e a significância corretos.
+- **GDELT só descritivo:** tom com 0 artigos vira nulo (indefinido). Os dados do GDELT
+  vieram ralos e com lacunas (dias faltando, total monitorado oscilando de ~4 mil a ~170 mil
+  artigos/dia), por isso não entram no teste estatístico.

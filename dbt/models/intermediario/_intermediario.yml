@@ -1,0 +1,43 @@
+version: 2
+
+models:
+  - name: int_retornos_diarios
+    description: Log-retornos diários por ativo (idx = posição do pregão na série do ativo)
+    tests:
+      - combinacao_unica:
+          arguments:
+            colunas: [ativo, tempo]
+  - name: int_retornos_horarios
+    description: Log-retornos de 1h por ativo
+    tests:
+      - combinacao_unica:
+          arguments:
+            colunas: [ativo, tempo]
+  - name: int_retornos_diarios_ref
+    description: Retornos diários com o retorno de referência do modelo de cada ativo
+  - name: int_retornos_horarios_ref
+    description: Retornos horários com o retorno de referência do modelo de cada ativo
+  - name: int_janelas_diarias
+    description: Observações diárias posicionadas em relação a cada evento (fase estimação/evento)
+    tests:
+      - combinacao_unica:
+          arguments:
+            colunas: [evento_id, ativo, rel]
+    columns:
+      - name: fase
+        tests:
+          - accepted_values:
+              arguments:
+                values: [estimacao, evento]
+  - name: int_janelas_horarias
+    description: Barras de 1h posicionadas em relação a cada evento
+    tests:
+      - combinacao_unica:
+          arguments:
+            colunas: [evento_id, ativo, rel]
+    columns:
+      - name: fase
+        tests:
+          - accepted_values:
+              arguments:
+                values: [estimacao, evento]

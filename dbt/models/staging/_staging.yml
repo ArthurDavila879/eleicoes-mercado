@@ -1,0 +1,56 @@
+version: 2
+
+models:
+  - name: stg_precos_diarios
+    description: Preços diários (Yahoo + dólar BCB) por ativo e data
+    tests:
+      - combinacao_unica:
+          arguments:
+            colunas: [ativo, data]
+    columns:
+      - name: ativo
+        tests: [not_null]
+      - name: data
+        tests: [not_null]
+      - name: preco
+        tests: [not_null]
+
+  - name: stg_precos_horarios
+    description: Barras de 1h por ativo (início da barra em UTC)
+    tests:
+      - combinacao_unica:
+          arguments:
+            colunas: [ativo, data_hora_utc]
+    columns:
+      - name: preco
+        tests: [not_null]
+
+  - name: stg_bcb_series
+    tests:
+      - combinacao_unica:
+          arguments:
+            colunas: [serie_nome, data]
+    columns:
+      - name: serie_nome
+        tests:
+          - accepted_values:
+              arguments:
+                values: [dolar_venda, euro_venda, meta_selic]
+
+  - name: stg_gdelt
+    tests:
+      - combinacao_unica:
+          arguments:
+            colunas: [candidato, data]
+
+  - name: stg_eventos
+    columns:
+      - name: evento_id
+        tests: [unique, not_null]
+      - name: tipo
+        tests:
+          - accepted_values:
+              arguments:
+                values: [debate, pesquisa, resultado, declaracao, outro]
+      - name: data_hora_utc
+        tests: [not_null]

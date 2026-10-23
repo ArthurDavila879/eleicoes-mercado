@@ -1,0 +1,12 @@
+ativo,nome,classe,modelo_retorno_normal
+^BVSP,Ibovespa,indice,media_constante
+PETR4.SA,Petrobras PN,acao,mercado
+VALE3.SA,Vale ON,acao,mercado
+ITUB4.SA,Itaú Unibanco PN,acao,mercado
+BBAS3.SA,Banco do Brasil ON,acao,mercado
+BRL=X,Real (USD/BRL Yahoo),moeda_brasil,controle_moedas
+BCB_DOLAR,Real (USD/BRL BCB/SGS venda),moeda_brasil,controle_moedas
+MXN=X,Peso mexicano (USD/MXN),moeda_controle,nenhum
+CLP=X,Peso chileno (USD/CLP),moeda_controle,nenhum
+COP=X,Peso colombiano (USD/COP),moeda_controle,nenhum
+ZAR=X,Rand sul-africano (USD/ZAR),moeda_controle,nenhum

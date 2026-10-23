@@ -1,0 +1,65 @@
+version: 2
+
+models:
+  - name: fct_parametros_modelo
+    description: Parâmetros do retorno normal (alfa, beta, sigma²) por frequência × evento × ativo
+    tests:
+      - combinacao_unica:
+          arguments:
+            colunas: [frequencia, evento_id, ativo]
+    columns:
+      - name: modelo_retorno_normal
+        tests:
+          - accepted_values:
+              arguments:
+                values: [mercado, media_constante, controle_moedas]
+      - name: sigma2
+        tests: [not_null]
+
+  - name: fct_retornos_anormais
+    description: Retornos anormais e CAR acumulado em cada dia/barra da janela do evento
+    tests:
+      - combinacao_unica:
+          arguments:
+            colunas: [frequencia, evento_id, ativo, rel]
+    columns:
+      - name: retorno_anormal
+        tests: [not_null]
+      - name: evento_id
+        tests:
+          - relationships:
+              arguments:
+                to: ref('stg_eventos')
+                field: evento_id
+
+  - name: fct_car_eventos
+    description: CAR, erro-padrão, estatística t e status por evento × ativo × frequência
+    tests:
+      - combinacao_unica:
+          arguments:
+            colunas: [frequencia, evento_id, ativo]
+    columns:
+      - name: status
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [completo, janela_parcial, aguardando_dados, estimacao_insuficiente]
+      - name: frequencia
+        tests:
+          - accepted_values:
+              arguments:
+                values: [diaria, horaria]
+
+  - name: resultados_eventos
+    description: Tabela final do estudo de evento com p-valor (t de Student) e significância
+    tests:
+      - combinacao_unica:
+          arguments:
+            colunas: [frequencia, evento_id, ativo]
+    columns:
+      - name: significancia
+        tests:
+          - accepted_values:
+              arguments:
+                values: ["***", "**", "*", "n.s."]

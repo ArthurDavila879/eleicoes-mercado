@@ -1,0 +1,17 @@
+version: 2
+
+sources:
+  - name: bruto
+    description: Tabelas carregadas a partir dos Parquet de data/bruto/ por src/ingestao/carga.py
+    schema: bruto
+    tables:
+      - name: bcb_sgs
+        description: Séries do SGS/BCB (dólar venda, euro venda, meta Selic)
+      - name: yahoo_diario
+        description: Cotações diárias do Yahoo Finance
+      - name: yahoo_horario
+        description: Barras de 1h do Yahoo Finance (início da barra em UTC)
+      - name: gdelt_diario
+        description: Volume de notícias e tom médio diários por candidato (GDELT DOC 2.0)
+      - name: eventos
+        description: Eventos validados de data/eventos.csv

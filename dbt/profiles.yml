@@ -1,0 +1,8 @@
+eleicoes:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      # Mesmo arquivo usado pela carga (src/ingestao/carga.py); caminho relativo à raiz do repo
+      path: "{{ env_var('DUCKDB_PATH', 'data/eleicoes.duckdb') }}"
+      threads: 4

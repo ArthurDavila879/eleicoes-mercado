@@ -1,0 +1,47 @@
+name: eleicoes_mercado
+version: "1.0.0"
+config-version: 2
+profile: eleicoes
+
+model-paths: ["models"]
+seed-paths: ["seeds"]
+test-paths: ["tests"]
+macro-paths: ["macros"]
+target-path: "target"
+clean-targets: ["target", "dbt_packages"]
+
+vars:
+  # Fuso de referência America/Sao_Paulo: UTC-3 fixo (sem horário de verão desde 2019)
+  fuso_offset_horas: -3
+  # Hora local a partir da qual um evento só afeta o pregão seguinte (fechamento da B3)
+  hora_corte_pregao: 17
+  # Janelas de evento (em pregões / barras de 1h, relativas ao dia/barra 0)
+  janela_diaria_inicio: -1
+  janela_diaria_fim: 3
+  janela_horaria_inicio: -2   # 2 barras de 1h antes do evento
+  janela_horaria_fim: 5       # barras 0..5 = 6 horas após o evento
+  # Janelas de estimação do modelo (antes do evento, sem sobrepor a janela do evento)
+  estimacao_diaria_inicio: -120
+  estimacao_diaria_fim: -11
+  estimacao_horaria_inicio: -300
+  estimacao_horaria_fim: -11
+  min_obs_estimacao_diaria: 60
+  min_obs_estimacao_horaria: 150
+  # Nº mínimo de moedas de controle com cotação no mesmo dia/hora
+  min_moedas_controle: 2
+
+models:
+  eleicoes_mercado:
+    staging:
+      +schema: staging
+      +materialized: view
+    intermediario:
+      +schema: intermediario
+      +materialized: table
+    marts:
+      +schema: marts
+      +materialized: table
+
+seeds:
+  eleicoes_mercado:
+    +schema: referencia
