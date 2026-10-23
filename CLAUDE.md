@@ -16,9 +16,12 @@ metodologia (e a mesma consulta-base no GDELT) vale para todos.
 - `src/ingestao/` — coletores (BCB/SGS, yfinance, GDELT), armazenamento Parquet
   particionado por mês em `data/bruto/` e carga no DuckDB (`data/eleicoes.duckdb`).
 - `src/eventos/` — validação de `data/eventos.csv`.
+- `src/estatistica/` — estudo de evento em Python (Patell, BMP, Corrado, placebo, sensibilidade),
+  chamado pelos modelos Python de robustez do dbt; deve reproduzir os modelos SQL.
 - `src/pipeline.py` — coleta → validação → carga → `dbt build`.
 - `dbt/` — modelos: `staging` → `intermediario` (log-retornos, janelas) → `marts`
-  (retornos anormais, CAR e significância).
+  (retornos anormais, CAR e significância; robustez em `fct_testes_robustez`,
+  `fct_placebo_*` e `fct_sensibilidade_janelas`).
 - `app.py` — dashboard Streamlit (porta 8501).
 - `tests/` — pytest com respostas mockadas (sem rede).
 

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import logging
 import time
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 
 import pandas as pd
@@ -75,12 +75,19 @@ def coletar(
     """Coleta incremental de todas as séries configuradas. Retorna linhas novas."""
     hoje = hoje or date.today()
     ultimos = armazenamento.ultimo_registro(FONTE, "serie_nome", "data", dir_bruto)
+    primeiros = armazenamento.primeiro_registro(FONTE, "serie_nome", "data", dir_bruto)
+    minimo = config.DATA_INICIO_PRECOS
     total = 0
     for codigo, nome in config.SERIES_SGS.items():
         inicio = armazenamento.inicio_incremental(
-            ultimos.get(nome), config.SOBREPOSICAO_DIAS_DIARIO
+            ultimos.get(nome), config.SOBREPOSICAO_DIAS_DIARIO, minimo
         )
         df = coletar_serie(codigo, inicio, hoje, sessao=sessao)
+        # Histórico anterior ao 1º registro (séries criadas antes de o início recuar)
+        if armazenamento.falta_historico(primeiros.get(nome), minimo):
+            fim_historico = pd.Timestamp(primeiros[nome]).date() - timedelta(days=1)
+            df = pd.concat([coletar_serie(codigo, minimo, fim_historico, sessao=sessao), df],
+                           ignore_index=True)
         n = armazenamento.salvar_incremental(
             df, FONTE, chaves=["serie_nome", "data"], col_tempo="data", dir_bruto=dir_bruto
         )

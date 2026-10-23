@@ -52,7 +52,10 @@ def test_coletar_incremental_e_idempotente(dir_bruto):
     assert bcb.coletar(dir_bruto, hoje=date(2026, 1, 10), sessao=sessao) == 0
     # Segunda rodada começa no último registro menos a sobreposição
     _, params = sessao.chamadas[3]
-    assert params["dataInicial"] == "01/01/2026"  # 05/01 - 5 dias, limitado ao início do estudo
+    assert params["dataInicial"] == "31/12/2025"  # 05/01 - 5 dias
+    # A série começa depois de 01/01/2023: a rodada também busca o histórico anterior
+    _, params = sessao.chamadas[4]
+    assert params["dataInicial"] == "01/01/2023" and params["dataFinal"] == "01/01/2026"
     assert len(armazenamento.ler_fonte("bcb_sgs", dir_bruto)) == 4
 
 

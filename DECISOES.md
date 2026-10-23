@@ -143,3 +143,43 @@ Decisões tomadas de forma autônoma durante a construção do projeto, com a ju
   houver menos de N elegíveis, usa todas. Versão sem restrição como sensibilidade.
 - **Volatilidade e volume anormais** em log, padronizados pela estimação; **Tesouro**: LTN
   ~3 anos e NTN-B Principal ~10 anos, taxa de compra da manhã, média constante.
+
+## Robustez (Fase 1, 23/10/2026)
+- **Reimplementação em Python do estudo de evento** (`src/estatistica/estudo_evento.py`), usada
+  pelos modelos Python do dbt de robustez. Patell, Corrado e o placebo precisam dos AR da
+  estimação e de rodar o estudo em centenas de datas, o que em SQL seria uma explosão de joins.
+  Para não haver duas metodologias, o teste `assert_robustez_igual_principal` exige que CAR, t,
+  p-valor, nº de observações e status batam com `resultados_eventos` em todos os evento × ativo ×
+  frequência (e na janela principal da sensibilidade). Os modelos SQL continuam sendo a análise
+  principal e não mudaram.
+- **Vars do dbt nos modelos Python:** um modelo Python só lê chaves de config com nome literal;
+  as vars vão juntas numa chave `parametros_robustez` (JSON montado no `_marts.yml`). O dbt acha
+  `src/` via `module_paths: [".", ".."]` no `profiles.yml`.
+- **Histórico de preços desde 01/01/2023** (diário, Yahoo e BCB) e de ~720 dias nas barras de 1h:
+  só com 2026 haveria ~70 datas placebo elegíveis. As janelas de estimação dos eventos reais
+  caem em 2026; conferido que `resultados_eventos` ficou idêntico (diferenças < 1e-15). A coleta
+  completa sozinha o histórico anterior ao 1º registro de cada série (tolerância de 7 dias para
+  feriados); a busca local do histórico só criou arquivos de meses passados, sem tocar o mês
+  corrente, para não conflitar com os commits da coleta automática.
+- **Patell, k:** `k = T − graus de liberdade da estimação` (2 nos modelos de mercado; 1 na média
+  constante e no controle de moedas, cuja σ² é a variância amostral). O pré-registro dizia "nº de
+  parâmetros"; no controle de moedas não há parâmetro de média, mas a variância amostral desconta
+  a média, então k = 1 é o coerente. Registrado em "Desvios" no `PRE_REGISTRO.md`.
+- **Corrado:** postos na amostra estimação (resíduos dentro da amostra) + janela (AR fora da
+  amostra), empates com posto médio.
+- **Placebo:**
+  - posições elegíveis: a janela do pseudoevento cabe nos dados e não toca nenhuma janela real;
+    o pseudoevento precisa passar na mesma regra de p-valor do estudo real (estimação mínima e
+    pelo menos metade das observações da janela);
+  - "início de sessão": diário, intervalo de mais de 1 dia desde o pregão anterior; horário,
+    ≥ 12 h desde a barra anterior (abertura do pregão nas ações; nas moedas, a volta depois do fim
+    de semana, porque a madrugada tem lacunas curtas);
+  - sorteio: embaralha as posições elegíveis com `default_rng([20261025, crc32(ativo|freq|versão)])`
+    e pega as primeiras N válidas (sem reposição); com menos de N elegíveis, usa todas;
+  - a distribuição de cada ativo é a mesma para todos os eventos. Enquanto o 2º turno não tem
+    dia 0, sua janela ainda não é excluída; quando os dados chegarem, as datas placebo que a
+    tocam saem automaticamente.
+- **Família do Holm por evento** (6 hipóteses); com p-valores faltando, ajusta pelos disponíveis
+  e registra o m usado (`n_familia_holm`).
+- **Sensibilidade:** as janelas alternativas usam a mesma estimação [-120,-11] e excluem da
+  estimação só as janelas principais [-1,+3] dos outros eventos.

@@ -76,6 +76,13 @@ def coletar_ticker(
     return df[colunas].reset_index(drop=True)
 
 
+def inicio_historico(intervalo: str, hoje: date) -> date:
+    """Data mais antiga a coletar: 01/01/2023 no diário; no horário, o limite do Yahoo."""
+    if intervalo == "1d":
+        return config.DATA_INICIO_PRECOS
+    return max(config.DATA_INICIO_PRECOS, hoje - timedelta(days=config.HISTORICO_MAX_HORARIO_DIAS))
+
+
 def coletar(
     dir_bruto: Path | None = None,
     hoje: date | None = None,
@@ -94,17 +101,26 @@ def coletar(
         (FONTE_HORARIO, "1h", "data_hora_utc", config.SOBREPOSICAO_DIAS_HORARIO),
     ]:
         ultimos = armazenamento.ultimo_registro(fonte, "ticker", col_tempo, dir_bruto)
+        primeiros = armazenamento.primeiro_registro(fonte, "ticker", col_tempo, dir_bruto)
+        minimo = inicio_historico(intervalo, hoje)
         partes = []
         for ticker in tickers:
             if intervalo == "1h" and ticker in config.TICKERS_SO_DIARIO:
                 continue
             tentativas += 1
-            inicio = armazenamento.inicio_incremental(ultimos.get(ticker), sobreposicao)
+            inicio = armazenamento.inicio_incremental(ultimos.get(ticker), sobreposicao, minimo)
             try:
                 partes.append(coletar_ticker(ticker, inicio, fim, intervalo, baixar))
             except Exception as erro:  # um ticker com problema não derruba a coleta
                 log.warning("Yahoo %s %s falhou: %s", ticker, intervalo, erro)
                 falhas.append(f"{ticker}/{intervalo}")
+            # Histórico anterior ao 1º registro (séries criadas antes de o início recuar)
+            if armazenamento.falta_historico(primeiros.get(ticker), minimo):
+                try:
+                    partes.append(coletar_ticker(
+                        ticker, minimo, pd.Timestamp(primeiros[ticker]).date(), intervalo, baixar))
+                except Exception as erro:  # o histórico é tentado de novo na próxima coleta
+                    log.warning("Yahoo histórico %s %s falhou: %s", ticker, intervalo, erro)
         partes = [p for p in partes if not p.empty]
         df = pd.concat(partes, ignore_index=True) if partes else pd.DataFrame()
         resultado[fonte] = armazenamento.salvar_incremental(

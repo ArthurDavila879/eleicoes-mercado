@@ -168,3 +168,53 @@ def test_barra_zero_e_a_primeira_apos_o_evento(banco):
         "where frequencia = 'horaria' and ativo = 'PETR4.SA' and evento_id = 1 and rel = 0"
     ).fetchall()[0][0]
     assert tempo == pd.Timestamp("2026-06-15 15:00")  # 12:00 em Brasília
+
+
+# --- Robustez (Fase 1): mesmos dados sintéticos, marts novos ---------------------------
+
+def _robustez(con, ativo, frequencia="diaria"):
+    return con.execute(
+        "select p_patell, p_bmp, p_corrado, p_valor_holm, car from marts.fct_testes_robustez "
+        "where ativo = ? and frequencia = ? and evento_id = 1", [ativo, frequencia]).fetchone()
+
+
+@pytest.mark.parametrize("ativo, frequencia", [
+    ("PETR4.SA", "diaria"), ("BRL=X", "diaria"), ("PETR4.SA", "horaria"), ("BRL=X", "horaria")])
+def test_robustez_patell_detecta_choque(banco, ativo, frequencia):
+    p_patell, *_ = _robustez(banco, ativo, frequencia)
+    assert p_patell < 0.01
+
+
+def test_robustez_sem_choque_nao_significativa(banco):
+    p_patell, p_bmp, p_corrado, *_ = _robustez(banco, "^BVSP")
+    assert p_patell > 0.05 and p_bmp > 0.05 and p_corrado > 0.05
+
+
+def test_holm_na_familia_principal(banco):
+    linhas = banco.execute(
+        "select ativo, p_valor, p_valor_holm, n_familia_holm from marts.fct_testes_robustez "
+        "where frequencia = 'diaria' and evento_id = 1 and familia_principal "
+        "and p_valor is not null").fetchall()
+    # Nos dados sintéticos só há ^BVSP, PETR4.SA e BRL=X da família
+    assert {l[0] for l in linhas} == {"^BVSP", "PETR4.SA", "BRL=X"}
+    assert all(l[3] == 3 and l[2] >= l[1] for l in linhas)
+
+
+def test_placebo_detecta_choque_e_nao_o_ibovespa(banco):
+    res = dict(banco.execute(
+        "select ativo, p_empirico from marts.fct_placebo_resultados "
+        "where frequencia = 'diaria' and evento_id = 1 and versao = 'irrestrita'").fetchall())
+    n = banco.execute(
+        "select count(*) from marts.fct_placebo_distribuicao "
+        "where frequencia = 'diaria' and ativo = 'PETR4.SA' and versao = 'irrestrita'").fetchone()[0]
+    assert n > 20
+    assert res["PETR4.SA"] == pytest.approx(1 / (n + 1))  # nenhum placebo tão extremo
+    assert res["^BVSP"] > 0.05
+
+
+def test_sensibilidade_de_janela(banco):
+    p = dict(banco.execute(
+        "select janela, p_valor from marts.fct_sensibilidade_janelas "
+        "where ativo = 'PETR4.SA' and evento_id = 1").fetchall())
+    assert set(p) == {"[0,0]", "[0,+1]", "[-1,+3]", "[-5,+5]"}
+    assert all(v < 0.01 for v in p.values())  # todas contêm o dia 0 do choque

@@ -31,6 +31,14 @@ vars:
   ativo_mercado_global: "EEM"
   # Nº mínimo de moedas de controle com cotação no mesmo dia/hora
   min_moedas_controle: 2
+  # --- Robustez (Fase 1; parâmetros fixados em PRE_REGISTRO.md) ---
+  # Família principal do ajuste de Holm (janela diária; fontes distintas)
+  familia_principal: ["^BVSP", "PETR4.SA", "VALE3.SA", "ITUB4.SA", "BBAS3.SA", "BRL=X"]
+  # Janelas de sensibilidade (diária), em pregões: início,fim separados por ";"
+  janelas_sensibilidade: "0,0;0,1;-1,3;-5,5"
+  # Placebo: nº de pseudoeventos por ativo × frequência × versão e semente fixa
+  placebo_n: 1000
+  placebo_semente: 20261025
 
 models:
   eleicoes_mercado:

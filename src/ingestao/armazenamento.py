@@ -92,6 +92,25 @@ def ultimo_registro(
     return {str(k): v.to_pydatetime() for k, v in ultimos.items()}
 
 
+def primeiro_registro(
+    fonte: str, col_grupo: str, col_tempo: str, dir_bruto: Path | None = None
+) -> dict[str, datetime]:
+    """Primeiro instante coletado por série/ativo."""
+    df = ler_fonte(fonte, dir_bruto)
+    if df.empty:
+        return {}
+    primeiros = pd.to_datetime(df[col_tempo]).groupby(df[col_grupo]).min()
+    return {str(k): v.to_pydatetime() for k, v in primeiros.items()}
+
+
+def falta_historico(primeiro: datetime | None, minimo: date) -> bool:
+    """True se a série já existe mas começa depois de ``minimo`` (+ tolerância)."""
+    if primeiro is None:
+        return False  # série nova: a coleta incremental já começa em ``minimo``
+    limite = minimo + pd.Timedelta(days=config.TOLERANCIA_HISTORICO_DIAS)
+    return pd.Timestamp(primeiro).date() > limite
+
+
 def inicio_incremental(
     ultimo: datetime | None, sobreposicao_dias: int, minimo: date | None = None
 ) -> date:

@@ -146,4 +146,18 @@ Todas com hipóteses bicaudais, mesmas janelas e mesma estimação do teste prin
 
 ## Desvios
 
-*(nenhum até o momento)*
+Esclarecimentos de implementação da Fase 1, registrados em 23/10/2026, **antes** da votação
+(nenhum dado do 2º turno existia):
+
+1. **Patell, k:** usado `k = T − graus de liberdade da estimação`, igual ao teste principal: 2
+   nos modelos de mercado, 1 na média constante e também 1 no controle de moedas, em que nenhum
+   parâmetro de média é estimado mas σ² é a variância amostral (que desconta a média). O texto da
+   seção 5 dizia "nº de parâmetros", o que daria k = 0 no controle de moedas.
+2. **Placebo, "1ª barra de um pregão":** operacionalizada como a barra com intervalo ≥ 12 h
+   desde a anterior (nas moedas, que negociam quase 24 h, isso é a volta do fim de semana).
+   "1º pregão após dia sem pregão": intervalo de mais de 1 dia corrido desde o pregão anterior.
+3. **Placebo, elegibilidade:** a janela do pseudoevento precisa caber inteira no período com
+   dados, e o pseudoevento precisa atender à mesma regra de p-valor do estudo real (estimação
+   mínima e pelo menos metade das observações da janela).
+4. **Placebo, sementes:** uma sequência por ativo × frequência × versão, derivada da semente
+   20261025 (`numpy.random.default_rng([20261025, crc32("ativo|frequência|versão")])`).

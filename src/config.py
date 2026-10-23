@@ -15,6 +15,13 @@ DIR_DBT = RAIZ / "dbt"
 
 # Início do período de estudo (coleta desde esta data)
 DATA_INICIO = date(2026, 1, 1)
+# Histórico de preços (Yahoo diário e BCB/SGS) desde 2023, usado só pelo teste placebo: as
+# janelas de estimação dos eventos reais caem em 2026 e não mudam (ver PRE_REGISTRO.md).
+DATA_INICIO_PRECOS = date(2023, 1, 1)
+# O Yahoo só fornece barras de 1h dos últimos ~730 dias; margem de segurança
+HISTORICO_MAX_HORARIO_DIAS = 720
+# Tolerância para considerar o histórico completo (o 1º dia pode ser feriado/fim de semana)
+TOLERANCIA_HISTORICO_DIAS = 7
 
 FUSO_REFERENCIA = "America/Sao_Paulo"
 

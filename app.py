@@ -64,6 +64,7 @@ TELAS = {
     "tempo": ":material/show_chart: Ativos no tempo",
     "real": ":material/currency_exchange: Real × emergentes",
     "noticias": ":material/newspaper: Notícias (GDELT)",
+    "robustez": ":material/verified: Robustez",
     "metodo": ":material/menu_book: Metodologia",
 }
 
@@ -146,6 +147,25 @@ def fmt_preco(valor: float, classe: str) -> str:
     if classe == "moeda_brasil":
         return f"R$ {fmt_num(valor, 4)}"
     return f"R$ {fmt_num(valor, 2)}"
+
+
+def fmt_p(p: float) -> str:
+    return "—" if pd.isna(p) else "<0,0001" if p < 0.0001 else fmt_num(p, 4)
+
+
+def estrelas(p: float) -> str:
+    if pd.isna(p):
+        return ""
+    return "***" if p < 0.01 else "**" if p < 0.05 else "*" if p < 0.10 else "n.s."
+
+
+def com_estrelas(p: float) -> str:
+    return f"{fmt_p(p)} {estrelas(p)}".strip()
+
+
+def pct_de_log(car):
+    """CAR em log-retorno → variação percentual aproximada."""
+    return (np.exp(car) - 1) * 100
 
 
 def selo(variacao: float | None) -> str:
@@ -632,6 +652,101 @@ def tela_noticias() -> None:
 
 
 # =====================================================================
+# Robustez
+# =====================================================================
+def tela_robustez() -> None:
+    cabecalho(
+        "Robustez", "Testes estatísticos adicionais, placebo e sensibilidade de janela.",
+        "O teste principal (t) supõe retornos anormais normais e com a mesma variância de antes do evento. "
+        "Aqui o mesmo CAR passa por testes que relaxam essas hipóteses: <b>Patell</b> (corrige o erro de "
+        "previsão do modelo), <b>BMP</b> (usa a dispersão da própria janela, robusto a volatilidade maior no "
+        "evento; precisa de ≥ 3 retornos e tem pouco poder com 5), <b>Corrado</b> (não paramétrico, por postos) "
+        "e o <b>placebo</b>: a mesma conta repetida em centenas de datas <i>sem</i> evento; o p-valor empírico é "
+        "a fração dessas datas com |CAR| pelo menos tão grande quanto o real. <b>Holm</b> ajusta os p-valores "
+        "pelas seis comparações da família principal. Tudo foi definido antes do 2º turno em "
+        "<code>PRE_REGISTRO.md</code>.",
+    )
+    resumo_evento()
+    frequencia = st.radio("Frequência", ["diaria", "horaria"], horizontal=True, key="freq_robustez",
+                          format_func={"diaria": "Diária · [-1,+3] pregões", "horaria": "Horária · [-2h,+6h]"}.get)
+    if evento_id is None:
+        st.info("Selecione um evento na barra lateral.")
+        return
+    testes = consultar(f"select * from marts.fct_testes_robustez where evento_id = {int(evento_id)} "
+                       f"and frequencia = '{frequencia}'")
+    placebo = consultar(f"select * from marts.fct_placebo_resultados where evento_id = {int(evento_id)} "
+                        f"and frequencia = '{frequencia}'")
+    prontos = testes[testes["p_valor"].notna()]
+    if prontos.empty:
+        st.info("**Aguardando dados** para este evento nesta frequência: os testes aparecem quando a janela "
+                "do evento for coletada.")
+        return
+
+    st.markdown("**Testes de significância do CAR** (p-valores bicaudais)")
+    emp = {v: placebo[placebo["versao"] == v].set_index("ativo")["p_empirico"] for v in ["restrita", "irrestrita"]}
+    tabela = pd.DataFrame({
+        "Ativo": prontos["ativo"].map(lambda a: nome_ativo.get(a, a)),
+        "CAR (%)": pct_de_log(prontos["car"]),
+        "t (principal)": prontos["p_valor"].map(com_estrelas),
+        "Patell": prontos["p_patell"].map(com_estrelas),
+        "BMP": prontos["p_bmp"].map(com_estrelas),
+        "Corrado": prontos["p_corrado"].map(com_estrelas),
+        "Placebo": prontos["ativo"].map(emp["restrita"]).map(com_estrelas),
+        "Placebo (qualquer dia)": prontos["ativo"].map(emp["irrestrita"]).map(com_estrelas),
+        "Holm (família)": prontos["p_valor_holm"].map(com_estrelas),
+    }).sort_values("CAR (%)", ascending=False)
+    st.dataframe(tabela, width="stretch", hide_index=True,
+                 column_config={"CAR (%)": st.column_config.NumberColumn(format="%.2f")})
+    st.caption("*** p<0,01 · ** p<0,05 · * p<0,10 · n.s. não significativo. Placebo: pseudodia 0 no 1º pregão "
+               "após um dia sem pregão (ou na 1ª barra do pregão), como o evento real de domingo; "
+               "'qualquer dia' sem essa restrição. Holm só na janela diária dos seis ativos da família principal.")
+
+    st.markdown("**Placebo: distribuição do CAR em datas sem evento**")
+    c1, c2 = st.columns([3, 2])
+    opcoes = prontos["ativo"].tolist()
+    ativo = c1.selectbox("Ativo", opcoes, format_func=lambda a: nome_ativo.get(a, a), key="ativo_placebo",
+                         index=opcoes.index("^BVSP") if "^BVSP" in opcoes else 0)
+    versao = c2.radio("Datas sorteadas", ["restrita", "irrestrita"], horizontal=True, key="versao_placebo",
+                      format_func={"restrita": "Início de semana/pregão", "irrestrita": "Qualquer dia"}.get)
+    dist = consultar(f"select car from marts.fct_placebo_distribuicao where frequencia = '{frequencia}' "
+                     f"and versao = '{versao}' and ativo = '{ativo}'")
+    linha = placebo[(placebo["ativo"] == ativo) & (placebo["versao"] == versao)]
+    car_real = pct_de_log(float(prontos.set_index("ativo").loc[ativo, "car"]))
+    if dist.empty:
+        st.info("Sem datas placebo elegíveis para este ativo.")
+    else:
+        fig = go.Figure(go.Histogram(x=pct_de_log(dist["car"]), nbinsx=50, name="Datas sem evento",
+                                     marker=dict(color=PALETA[0], line=dict(width=0)), opacity=0.85,
+                                     hovertemplate="CAR %{x}<br>%{y} datas<extra></extra>"))
+        fig.add_vline(x=car_real, line_color=PALETA[1], line_width=2.5)
+        p_emp = linha["p_empirico"].iloc[0] if not linha.empty else np.nan
+        fig.add_annotation(x=car_real, y=1, yref="paper", yanchor="bottom", showarrow=False,
+                           text=f"<b>Evento: {fmt_pct(car_real)}</b> · p empírico {fmt_p(p_emp)}",
+                           font=dict(color=PALETA[1], size=12))
+        estilo(fig, "Nº de datas", 380, datas=False).update_layout(
+            showlegend=False, hovermode="closest", bargap=0.04, xaxis_title="CAR (%) na janela")
+        grafico(fig)
+        st.caption(f"{len(dist)} datas sem evento, sorteadas sem reposição com semente fixa, fora das janelas dos "
+                   "eventos reais, com a mesma estimação e a mesma janela do estudo.")
+
+    if frequencia == "diaria":
+        st.markdown("**Sensibilidade à janela** (diária; [-1,+3] é a principal)")
+        sens = consultar(f"select * from marts.fct_sensibilidade_janelas where evento_id = {int(evento_id)}")
+        sens = sens[sens["p_valor"].notna()]
+        if sens.empty:
+            st.info("Sem janelas com dados suficientes.")
+            return
+        ordem = (sens.drop_duplicates("janela").sort_values(["janela_fim", "janela_inicio"])["janela"].tolist())
+        sens["celula"] = [f"{fmt_pct(pct_de_log(c), 2)} {estrelas(p)}" for c, p in zip(sens["car"], sens["p_valor"])]
+        larga = sens.pivot(index="ativo", columns="janela", values="celula").reindex(columns=ordem)
+        larga.index = [nome_ativo.get(a, a) for a in larga.index]
+        larga.columns = [f"{j} ★" if j == "[-1,+3]" else j for j in larga.columns]
+        st.dataframe(larga.fillna("—"), width="stretch")
+        st.caption("CAR (%) e significância pelo teste t principal, com a mesma janela de estimação [-120,-11]. "
+                   "★ janela principal.")
+
+
+# =====================================================================
 # Metodologia
 # =====================================================================
 def tela_metodo() -> None:
@@ -655,6 +770,8 @@ def tela_metodo() -> None:
   `t = CAR / (σ·√L)`, com σ estimado na janela de estimação e p-valor da t de Student.
   O intervalo de 95% dos gráficos é `CAR ± 1,96·σ·√L`, convertido para variação %.
 - Observações de estimação que caem na janela de outro evento são descartadas.
+- **Robustez:** testes de Patell, BMP (adaptação em série temporal) e Corrado, placebo com datas
+  sem evento, sensibilidade de janela e ajuste de Holm, conforme o pré-registro (`PRE_REGISTRO.md`).
 - **Limitações:** poucos eventos, eventos e notícias sobrepostos, choques globais no mesmo dia,
   e correlação temporal não é causalidade.
 """)
@@ -662,5 +779,5 @@ def tela_metodo() -> None:
 
 {
     "painel": tela_painel, "evento": tela_evento, "tempo": tela_tempo,
-    "real": tela_real, "noticias": tela_noticias, "metodo": tela_metodo,
+    "real": tela_real, "noticias": tela_noticias, "robustez": tela_robustez, "metodo": tela_metodo,
 }[tela]()
