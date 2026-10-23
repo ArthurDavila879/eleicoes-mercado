@@ -4,8 +4,9 @@ name: Coleta de dados
 # Pregão da B3: ~10h às 18h de Brasília = 13h às 21h UTC.
 on:
   schedule:
-    - cron: "5 13-21 * * 1-5"   # de hora em hora (minuto 5) em dias úteis, 10:05–18:05 BRT
-    - cron: "30 1 * * *"        # uma vez à noite, todos os dias: 22:30 BRT
+    # Minutos "quebrados": o GitHub atrasa ou descarta agendamentos no começo da hora
+    - cron: "17 13-21 * * 1-5"  # de hora em hora (minuto 17) em dias úteis, 10:17–18:17 BRT
+    - cron: "47 1 * * *"        # uma vez à noite, todos os dias: 22:47 BRT
   workflow_dispatch:
 
 permissions:
@@ -49,5 +50,22 @@ jobs:
             exit 0
           fi
           git commit -m "dados: coleta automática $(date -u +'%Y-%m-%dT%H:%MZ')"
-          git pull --rebase
-          git push
+          # Se alguém publicou Parquet no meio do caminho, o rebase de arquivo binário conflita:
+          # nesse caso parte do remoto e refaz a coleta (é incremental e idempotente)
+          for tentativa in 1 2 3; do
+            if git pull --rebase && git push; then
+              exit 0
+            fi
+            echo "Conflito no push (tentativa $tentativa): refazendo a coleta sobre o remoto."
+            git rebase --abort 2>/dev/null || true
+            git fetch origin main
+            git reset --hard origin/main
+            python -m src.ingestao
+            git add data/bruto
+            if git diff --cached --quiet; then
+              echo "Sem dados novos após refazer."
+              exit 0
+            fi
+            git commit -m "dados: coleta automática $(date -u +'%Y-%m-%dT%H:%MZ')"
+          done
+          exit 1

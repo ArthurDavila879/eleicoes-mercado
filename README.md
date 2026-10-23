@@ -197,7 +197,7 @@ eventos com data e hora verificáveis e a URL da fonte. Valide com `python -m sr
 3. Em **Actions**, habilite os workflows se solicitado e rode **Coleta de dados → Run workflow**
    uma vez para testar (`workflow_dispatch`).
 4. A partir daí, `.github/workflows/coleta.yml` roda de hora em hora nos dias úteis durante o
-   pregão (13h05–21h05 UTC = 10h05–18h05 em Brasília) e uma vez à noite (01h30 UTC = 22h30),
+   pregão (13h17–21h17 UTC = 10h17–18h17 em Brasília) e uma vez à noite (01h47 UTC = 22h47),
    e commita os Parquet novos em `data/bruto/`. O `testes.yml` roda pytest e o pipeline
    (carga + dbt build) em todo push.
 
