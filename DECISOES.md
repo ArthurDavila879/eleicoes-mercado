@@ -324,3 +324,20 @@ Decisões tomadas de forma autônoma durante a construção do projeto, com a ju
   futuros americanos não se alinham às da B3.
 - **Fatores definidos em `dbt/seeds/modelos_multifatoriais.csv`** (PETR4/PETR3 → `BZ=F`; VALE3 →
   `TIO=F`), lado a lado com o modelo simples de `resultados_eventos`.
+
+## Dólar implícito no bitcoin (rodada 3, bloco D, 23/10/2026)
+- **Mesma corretora e mesmo instante:** `BTCBRL / BTCUSDT` na Binance, barra a barra. Usar BTC-BRL
+  de uma fonte e BTC-USD de outra misturaria a base entre corretoras com o câmbio. O `BTC-USD` do
+  Yahoo entra como checagem (`dolar_implicito_yahoo`; razão média com o principal: 1,0002).
+- **USDT como dólar:** a USDT oscila perto de 1 dólar; desvios pequenos entram no dólar implícito.
+- **Instantes:** preço em T = fechamento da barra de 1h que termina em T. Sexta 17h de Brasília =
+  20h UTC (fechamento da B3 e do câmbio); segunda 10h = 13h UTC (abertura da B3). Para o
+  `BRL=X` oficial, aceita-se a última barra até 3 h antes (há lacunas de barras em horários de
+  pouco negócio).
+- **Placebo em vez de teste paramétrico:** os retornos de bitcoin têm caudas pesadas e a
+  volatilidade de fim de semana é diferente da dos dias úteis; a distribuição empírica do mesmo
+  intervalo em ~300 fins de semana (sem os dos eventos) é a referência mais honesta. z = reação /
+  desvio-padrão do placebo, só descritivo.
+- **Sem "retorno anormal":** a reação não desconta um movimento global do dólar no fim de semana
+  (não há referência confiável de câmbio de emergentes aos domingos). O placebo mede o quanto a
+  variação é incomum, não o quanto é específica do Brasil.

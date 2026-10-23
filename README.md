@@ -164,6 +164,27 @@ A análise agregada (`fct_caar_eventos`) junta os eventos de cada ativo (todos, 
 O último teste é o mais neutro: eleições diferentes podem mover o preço em sentidos opostos e a
 média com sinal se cancelaria; ele pergunta só se houve reação anormal, em qualquer direção.
 
+### Dólar implícito no bitcoin (fim de semana)
+
+O câmbio e a B3 estão fechados entre o fim da votação (domingo) e a abertura de segunda. O
+bitcoin negocia 24 h por dia, então `USD/BRL implícito = BTCBRL / BTCUSDT` (Binance, barras de
+1h, mesmo instante) mostra o real nesse intervalo (`fct_dolar_implicito_eventos`). As medidas
+são:
+
+- **pré-evento:** sexta 17h → domingo, no instante do evento;
+- **reação:** domingo, no instante do evento → segunda 10h de Brasília (abertura da B3);
+- **fim de semana inteiro:** sexta 17h → segunda 10h, comparado ao `BRL=X` oficial no mesmo
+  intervalo.
+
+A significância da reação vem de um placebo: o mesmo intervalo (domingo na hora do evento →
+segunda 10h) em todos os outros fins de semana com dados. O BTCBRL existe desde out/2020, então
+entram 2022 e 2026.
+
+**Limitação de liquidez:** o par BTCBRL é pouco líquido (mediana de ~2 BTC por hora na Binance,
+menos de madrugada) e tem um ágio/deságio próprio em relação ao câmbio oficial (−0,5% em média
+no fim de semana do 1º turno de 2026). O dólar implícito é um sinal ruidoso, não uma cotação de
+câmbio; vale como indicação de direção e de ordem de grandeza antes da abertura.
+
 ### Volatilidade e volume anormais
 
 Na janela diária, com o mesmo dia 0 e a mesma estimação [-120,-11] (`fct_atividade_anormal`):
@@ -356,6 +377,25 @@ Brasil e real. Segundo, se a reação vai sempre para o mesmo lado: o CAAR com s
 emergentes na janela de **todas** as sete eleições. Com 7 eventos, o t transversal tem pouco
 poder, e cada eleição continua sendo um caso com contexto próprio.
 
+**Dólar implícito no bitcoin** (USD/BRL; negativo = real mais forte)
+
+| Evento | Sexta 17h → domingo (pré) | Domingo → segunda 10h (reação) | z da reação | p empírico | Fim de semana: implícito × oficial |
+|---|---:|---:|---:|---:|---:|
+| 2022 · 1º turno | −0,09% | −1,94% | −3,4 | 0,016 | −2,02% × — |
+| 2022 · 2º turno | −0,49% | +1,32% | +2,3 | 0,045 | +0,82% × — |
+| 2026 · 1º turno | +1,02% | −4,42% | −7,9 | 0,003 | −3,45% × −4,28% |
+
+Placebo com 309 fins de semana; desvio-padrão da reação num fim de semana comum: 0,57%. Em 2022
+não há barras de 1h do `BRL=X` para comparar (o Yahoo só guarda ~2 anos).
+
+- No 1º turno de 2026, o dólar implícito caiu 4,4% entre o fim da votação e a abertura de
+  segunda. É o menor p-valor possível com 309 fins de semana, e o movimento tem a mesma direção
+  e ordem de grandeza da queda do câmbio oficial no fim de semana (−4,3%). Boa parte da
+  reação do real já aparecia no bitcoin antes de o mercado oficial abrir.
+- O volume de bitcoin na janela da reação (84 BTC) ficou perto do de um fim de semana comum
+  (mediana de 98 BTC): o sinal veio do preço, sem um aumento de liquidez que o tornasse mais
+  confiável.
+
 **Robustez do 1º turno — janela diária [-1,+3]** (p-valores bicaudais)
 
 | Ativo | t (principal) | Patell | BMP | Corrado | Placebo | Placebo (qualquer dia) | Holm |
@@ -422,6 +462,8 @@ Placebo com 200 datas elegíveis por ação (186 no `BRL=X`) na versão principa
   dos parâmetros e supõe ARs independentes e homocedásticos; os testes de robustez (Patell, BMP,
   Corrado, placebo) relaxam essas hipóteses, mas BMP e Corrado têm pouco poder com um ativo e
   janelas curtas.
+- **Dólar implícito no bitcoin** depende de um par pouco líquido (BTCBRL) e da paridade
+  USDT ≈ USD; serve como sinal de direção antes da abertura, não como cotação.
 - **Juros fora do estudo.** A fonte do Tesouro Direto não estava acessível de forma confiável.
 - **Placebo limitado pelo histórico.** Há ~200 datas elegíveis na versão principal (diária), o
   que limita a resolução do p-valor empírico (mínimo ≈ 0,005).

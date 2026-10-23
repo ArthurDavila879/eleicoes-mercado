@@ -135,3 +135,17 @@ models:
       - combinacao_unica:
           arguments:
             colunas: [evento_id, ativo, fator]
+
+  - name: fct_dolar_implicito_eventos
+    description: Dólar implícito (BTCBRL/BTCUSDT) de sexta 17h ao domingo do evento e à abertura de segunda, com placebo
+    tests:
+      - combinacao_unica:
+          arguments:
+            colunas: [evento_id]
+
+  - name: fct_dolar_implicito_placebo
+    description: Reação do dólar implícito no mesmo intervalo em fins de semana sem evento
+    tests:
+      - combinacao_unica:
+          arguments:
+            colunas: [evento_id, instante]
