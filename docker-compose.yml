@@ -1,0 +1,22 @@
+services:
+  # Coleta (incremental) + carga no DuckDB + dbt build
+  pipeline:
+    build: .
+    command: ["python", "-m", "src.pipeline"]
+    volumes:
+      - ./data:/app/data
+    profiles: ["pipeline"]
+
+  # Roda a suíte de testes (pytest)
+  testes:
+    build: .
+    command: ["pytest", "-q"]
+    profiles: ["testes"]
+
+  # Dashboard Streamlit em http://localhost:8501
+  app:
+    build: .
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./data:/app/data
