@@ -540,9 +540,13 @@ def tela_evento() -> None:
             st.markdown("**CAR acumulado, passo a passo**")
             grafico(fig)
 
+    # Ativos ainda sem dados na janela saem da tabela (senão viram linhas de "None") e são listados abaixo
+    sem_dados = filtro[filtro["car"].isna()]
+    if not completos.empty:
+        filtro = filtro[filtro["car"].notna()]
     tabela = pd.DataFrame({
         "Ativo": filtro["nome"],
-        "Modelo": filtro["modelo_retorno_normal"].map(NOMES_MODELO),
+        "Modelo": filtro["modelo_retorno_normal"].map(NOMES_MODELO).fillna("—"),
         "Janela": filtro["janela"],
         "CAR (%)": filtro["car_pct"],
         "Erro-padrão (p.p.)": filtro["erro_padrao_car"] * 100,
@@ -563,6 +567,8 @@ def tela_evento() -> None:
     st.caption("CAR = soma dos retornos anormais (log) na janela, exibido em variação %. Significância (t de Student, "
                "bicaudal): *** p<0,01 · ** p<0,05 · * p<0,10 · n.s. não significativo. Para o real, CAR negativo = "
                "real mais forte que os pares.")
+    if not completos.empty and not sem_dados.empty:
+        st.caption("Ainda sem dados na janela: " + ", ".join(sem_dados["nome"].fillna(sem_dados["ativo"])) + ".")
 
     if frequencia == "diaria" and evento_id is not None:
         multi = consultar(f"select * from marts.fct_modelo_multifatorial where evento_id = {int(evento_id)} "
@@ -931,9 +937,13 @@ def tela_personalizado() -> None:
     fig.add_hline(y=0, line_color=CINZA, line_width=1)
     estilo(fig, "%", 380, datas=False).update_xaxes(title=f"Posição relativa ao evento ({unidade})", dtick=1)
     grafico(fig)
-    st.dataframe(passos.assign(retorno_anormal=passos["retorno_anormal"] * 100,
+    tempo = pd.to_datetime(passos["tempo"])
+    tempo = (tempo.dt.strftime("%d/%m/%Y") if frequencia == "diaria"
+             else (tempo + pd.Timedelta(hours=int(VARS["fuso_offset_horas"]))).dt.strftime("%d/%m/%Y %Hh"))
+    st.dataframe(passos.assign(tempo=tempo, retorno_anormal=passos["retorno_anormal"] * 100,
                                car_acumulado=passos["car_acumulado"] * 100).rename(columns={
-        "rel": "Posição", "tempo": "Data/hora (UTC nas barras)", "retorno_anormal": "AR (%)",
+        "rel": "Posição", "tempo": "Pregão" if frequencia == "diaria" else "Início da barra (Brasília)",
+        "retorno_anormal": "AR (%)",
         "car_acumulado": "CAR acumulado (%)"}), width="stretch", hide_index=True,
         column_config={c: st.column_config.NumberColumn(format="%.3f") for c in ["AR (%)", "CAR acumulado (%)"]})
 
@@ -1018,6 +1028,8 @@ def tela_atividade() -> None:
         with coluna:
             st.markdown(f"**{NOMES_MEDIDA.get(medida, medida)}**")
             grafico(fig)
+    sem_dados = dados[dados["p_valor"].isna()]
+    dados = dados[dados["p_valor"].notna()]
     tabela = pd.DataFrame({
         "Medida": dados["medida"].map(NOMES_MEDIDA),
         "Ativo": dados["ativo"].map(lambda a: nome_ativo.get(a, a)),
@@ -1035,6 +1047,9 @@ def tela_atividade() -> None:
     st.caption("Média na janela = exp(média do log anormal) − 1. Dia 0 = primeiro pregão depois do evento. "
                "Volatilidade e volume têm persistência (dias agitados vêm em sequência), o que torna o t "
                "otimista; leia junto com o tamanho do efeito.")
+    if not sem_dados.empty:
+        st.caption("Ainda sem dados na janela: " + ", ".join(sorted(
+            {nome_ativo.get(a, a) for a in sem_dados["ativo"]})) + ".")
 
 
 # =====================================================================
