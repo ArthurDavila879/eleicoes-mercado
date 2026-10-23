@@ -88,6 +88,7 @@ def coletar(
     tickers = tickers or config.TICKERS_YAHOO
     resultado: dict[str, int] = {}
     falhas: list[str] = []
+    tentativas = 0
     for fonte, intervalo, col_tempo, sobreposicao in [
         (FONTE_DIARIO, "1d", "data", config.SOBREPOSICAO_DIAS_DIARIO),
         (FONTE_HORARIO, "1h", "data_hora_utc", config.SOBREPOSICAO_DIAS_HORARIO),
@@ -95,6 +96,9 @@ def coletar(
         ultimos = armazenamento.ultimo_registro(fonte, "ticker", col_tempo, dir_bruto)
         partes = []
         for ticker in tickers:
+            if intervalo == "1h" and ticker in config.TICKERS_SO_DIARIO:
+                continue
+            tentativas += 1
             inicio = armazenamento.inicio_incremental(ultimos.get(ticker), sobreposicao)
             try:
                 partes.append(coletar_ticker(ticker, inicio, fim, intervalo, baixar))
@@ -107,6 +111,6 @@ def coletar(
             df, fonte, chaves=["ticker", col_tempo], col_tempo=col_tempo, dir_bruto=dir_bruto
         )
         log.info("Yahoo %s: %s linhas baixadas, %s novas", intervalo, len(df), resultado[fonte])
-    if falhas and len(falhas) == 2 * len(tickers):
+    if falhas and len(falhas) == tentativas:
         raise RuntimeError("Todas as coletas do Yahoo falharam: " + ", ".join(falhas))
     return resultado

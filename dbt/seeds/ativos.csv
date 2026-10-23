@@ -1,5 +1,5 @@
 ativo,nome,classe,modelo_retorno_normal
-^BVSP,Ibovespa,indice,media_constante
+^BVSP,Ibovespa,indice,mercado_global
 PETR4.SA,Petrobras PN,acao,mercado
 VALE3.SA,Vale ON,acao,mercado
 ITUB4.SA,Itaú Unibanco PN,acao,mercado
@@ -10,3 +10,4 @@ MXN=X,Peso mexicano (USD/MXN),moeda_controle,nenhum
 CLP=X,Peso chileno (USD/CLP),moeda_controle,nenhum
 COP=X,Peso colombiano (USD/COP),moeda_controle,nenhum
 ZAR=X,Rand sul-africano (USD/ZAR),moeda_controle,nenhum
+EEM,Emergentes (ETF EEM),indice_global,nenhum

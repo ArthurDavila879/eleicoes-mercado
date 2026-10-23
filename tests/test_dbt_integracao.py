@@ -19,6 +19,8 @@ EVENTO_LOCAL = "2026-06-15T12:00:00-03:00"  # segunda-feira, durante o pregão
 CHOQUE_DIARIO = 0.08
 CHOQUE_HORARIO = 0.03
 BETA_PETR4 = 1.2
+BETA_IBOV_EEM = 0.8
+FERIADO_EUA = pd.Timestamp("2026-05-25")  # Memorial Day: B3 abre, NYSE fecha
 
 
 def _precos(retornos: np.ndarray, inicial: float = 100.0) -> np.ndarray:
@@ -32,7 +34,8 @@ def _dados_sinteticos(dir_bruto):
     dias = pd.bdate_range("2026-01-02", "2026-07-31")
     dia0 = dias.get_loc(pd.Timestamp("2026-06-15"))
     n = len(dias)
-    r_ibov = rng.normal(0, 0.005, n)
+    r_eem = rng.normal(0, 0.006, n)
+    r_ibov = BETA_IBOV_EEM * r_eem + rng.normal(0, 0.003, n)
     r_petr = 0.0001 + BETA_PETR4 * r_ibov + rng.normal(0, 0.004, n)
     r_petr[dia0] += CHOQUE_DIARIO
     controles = {t: rng.normal(0, 0.004, n) for t in ["MXN=X", "CLP=X", "COP=X", "ZAR=X"]}
@@ -46,6 +49,11 @@ def _dados_sinteticos(dir_bruto):
         linhas.append(pd.DataFrame({
             "ticker": ticker, "data": dias, "abertura": p, "maxima": p, "minima": p,
             "fechamento": p, "fechamento_ajustado": p, "volume": 1000.0}))
+    # Mercado global (só diário), sem o pregão do feriado americano
+    p = _precos(r_eem)
+    eem = pd.DataFrame({"ticker": "EEM", "data": dias, "abertura": p, "maxima": p, "minima": p,
+                        "fechamento": p, "fechamento_ajustado": p, "volume": 1000.0})
+    linhas.append(eem[eem["data"] != FERIADO_EUA])
     armazenamento.salvar_incremental(pd.concat(linhas), "yahoo_diario", ["ticker", "data"], "data", dir_bruto)
 
     # --- horário: barras 13h–19h UTC (10h–16h em Brasília) de abr a jul/2026 ---
@@ -127,6 +135,26 @@ def test_beta_do_modelo_de_mercado(banco):
 def test_ibovespa_sem_choque_nao_e_significativo(banco):
     status, _, p_valor, _, _, _ = _resultado(banco, "^BVSP", "diaria")
     assert status == "completo" and p_valor > 0.01
+
+
+def test_ibovespa_usa_mercado_global_so_no_diario(banco):
+    modelos = dict(banco.execute(
+        "select frequencia, modelo_retorno_normal from marts.resultados_eventos "
+        "where ativo = '^BVSP' and evento_id = 1").fetchall())
+    assert modelos == {"diaria": "mercado_global", "horaria": "media_constante"}
+    _, _, _, _, beta, _ = _resultado(banco, "^BVSP", "diaria")
+    assert beta == pytest.approx(BETA_IBOV_EEM, abs=0.15)
+
+
+def test_retorno_global_alinhado_aos_pregoes_do_ibovespa(banco):
+    # No feriado americano o ETF não negocia: retorno de referência 0 nesse pregão da B3,
+    # e o pregão seguinte acumula os dois dias do ETF (sem lacuna nem dupla contagem)
+    linhas = dict(banco.execute(
+        "select cast(tempo as date), r_referencia from intermediario.int_retornos_diarios_ref "
+        "where ativo = '^BVSP' and tempo between '2026-05-22' and '2026-05-26'").fetchall())
+    assert linhas[FERIADO_EUA.date()] == pytest.approx(0.0)
+    assert linhas[pd.Timestamp("2026-05-26").date()] != pytest.approx(0.0)
+    assert banco.execute("select count(*) from marts.resultados_eventos where ativo = 'EEM'").fetchone()[0] == 0
 
 
 def test_evento_futuro_fica_aguardando_dados(banco):

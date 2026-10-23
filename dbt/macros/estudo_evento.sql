@@ -16,9 +16,13 @@ window w as (partition by ativo order by {{ col_tempo }})
 
 {# Junta a cada retorno o retorno de referência exigido pelo modelo do ativo:
    - mercado: retorno do Ibovespa no mesmo pregão/barra (modelo de mercado);
+   - mercado_global: retorno do ETF de emergentes (var ativo_mercado_global) entre os
+     MESMOS dois pregões do ativo (ASOF: último fechamento do ETF até cada data), para que
+     feriados só de um dos países não desalinhem os retornos. Só existe na análise diária;
+     na horária o ativo cai para média constante (barras dos EUA começam na meia hora);
    - controle_moedas: média das moedas de controle no mesmo dia/hora;
    - media_constante / nenhum: sem referência. #}
-{% macro retornos_com_referencia(modelo_retornos) %}
+{% macro retornos_com_referencia(modelo_retornos, frequencia) %}
 with retornos as (
     select * from {{ ref(modelo_retornos) }}
     where log_retorno is not null
@@ -43,6 +47,41 @@ controle as (
     where ativo in (select ativo from ativos where classe = 'moeda_controle')
     group by tempo
     having count(*) >= {{ var('min_moedas_controle') }}
+),
+
+{% if frequencia == 'diaria' %}
+precos_global as (
+    select tempo, preco
+    from {{ ref(modelo_retornos) }}
+    where ativo = '{{ var("ativo_mercado_global") }}'
+),
+
+datas_ativo as (
+    select ativo, tempo, lag(tempo) over (partition by ativo order by tempo) as tempo_anterior
+    from {{ ref(modelo_retornos) }}
+    where ativo in (select ativo from ativos where modelo_retorno_normal = 'mercado_global')
+),
+
+-- Só até o último fechamento coletado do ETF (senão o ASOF repetiria o preço e daria retorno 0)
+global as (
+    select d.ativo, d.tempo, ln(g1.preco / g0.preco) as r_global
+    from datas_ativo d
+    asof join precos_global g1 on d.tempo >= g1.tempo
+    asof join precos_global g0 on d.tempo_anterior >= g0.tempo
+    where d.tempo <= (select max(tempo) from precos_global)
+),
+{% endif %}
+
+modelo_efetivo as (
+    select
+        ativo,
+        classe,
+        case
+            when modelo_retorno_normal = 'mercado_global' and '{{ frequencia }}' <> 'diaria'
+                then 'media_constante'
+            else modelo_retorno_normal
+        end as modelo_retorno_normal
+    from ativos
 )
 
 select
@@ -57,12 +96,14 @@ select
     c.n_moedas_controle,
     case a.modelo_retorno_normal
         when 'mercado' then m.r_mercado
+        {% if frequencia == 'diaria' %}when 'mercado_global' then g.r_global{% endif %}
         when 'controle_moedas' then c.r_controle
     end as r_referencia
 from retornos r
-join ativos a on a.ativo = r.ativo
+join modelo_efetivo a on a.ativo = r.ativo
 left join mercado m on m.tempo = r.tempo
 left join controle c on c.tempo = r.tempo
+{% if frequencia == 'diaria' %}left join global g on g.ativo = r.ativo and g.tempo = r.tempo{% endif %}
 {% endmacro %}
 
 
@@ -124,6 +165,7 @@ where r.fase is not null
 
 {# Parâmetros do retorno normal estimados na janela de estimação de cada evento×ativo.
    - mercado:          R = alfa + beta·R_ibov + e   (MQO; gl = n - 2)
+   - mercado_global:   R = alfa + beta·R_EEM + e    (MQO; gl = n - 2)
    - media_constante:  R = alfa + e                  (gl = n - 1)
    - controle_moedas:  AR = R - média(controles); alfa = 0, beta = 1 (gl = n - 1)
    sigma2 = variância dos resíduos/retornos anormais na estimação. #}
@@ -131,7 +173,7 @@ where r.fase is not null
 with est as (
     select * from {{ ref(modelo_janelas) }}
     where fase = 'estimacao'
-      and modelo_retorno_normal in ('mercado', 'media_constante', 'controle_moedas')
+      and modelo_retorno_normal in ('mercado', 'mercado_global', 'media_constante', 'controle_moedas')
       and log_retorno is not null
       and (modelo_retorno_normal = 'media_constante' or r_referencia is not null)
 ),
@@ -141,14 +183,16 @@ coef as (
         evento_id,
         ativo,
         any_value(modelo_retorno_normal) as modelo_retorno_normal,
-        case any_value(modelo_retorno_normal)
-            when 'mercado' then regr_intercept(log_retorno, r_referencia)
-            when 'media_constante' then avg(log_retorno)
+        case
+            when any_value(modelo_retorno_normal) in ('mercado', 'mercado_global')
+                then regr_intercept(log_retorno, r_referencia)
+            when any_value(modelo_retorno_normal) = 'media_constante' then avg(log_retorno)
             else 0
         end as alfa,
-        case any_value(modelo_retorno_normal)
-            when 'mercado' then regr_slope(log_retorno, r_referencia)
-            when 'media_constante' then 0
+        case
+            when any_value(modelo_retorno_normal) in ('mercado', 'mercado_global')
+                then regr_slope(log_retorno, r_referencia)
+            when any_value(modelo_retorno_normal) = 'media_constante' then 0
             else 1
         end as beta,
         count(*) as n_estimacao
@@ -183,11 +227,11 @@ select
     c.alfa,
     c.beta,
     c.n_estimacao,
-    case when c.modelo_retorno_normal = 'mercado' then c.n_estimacao - 2 else c.n_estimacao - 1 end
+    case when c.modelo_retorno_normal in ('mercado', 'mercado_global') then c.n_estimacao - 2 else c.n_estimacao - 1 end
         as graus_liberdade,
     -- mercado: soma dos quadrados dos resíduos / (n - 2); demais: variância amostral
     case
-        when c.modelo_retorno_normal = 'mercado'
+        when c.modelo_retorno_normal in ('mercado', 'mercado_global')
             then d.soma_quadrados / nullif(c.n_estimacao - 2, 0)
         else d.variancia_amostral
     end as sigma2

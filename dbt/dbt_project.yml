@@ -27,6 +27,8 @@ vars:
   estimacao_horaria_fim: -11
   min_obs_estimacao_diaria: 60
   min_obs_estimacao_horaria: 150
+  # Mercado global do modelo do Ibovespa (só na análise diária; ver DECISOES.md)
+  ativo_mercado_global: "EEM"
   # Nº mínimo de moedas de controle com cotação no mesmo dia/hora
   min_moedas_controle: 2
 

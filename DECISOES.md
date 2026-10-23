@@ -79,8 +79,20 @@ Decisões tomadas de forma autônoma durante a construção do projeto, com a ju
   "[-2h,+6h]" = 2 barras antes e 6 barras (0…+5) depois do evento. Num domingo às 17h, as barras
   -2 e -1 são as últimas da sexta e a barra 0 é a primeira do pregão seguinte, cujo retorno
   inclui o fim de semana inteiro (é aí que a reação aparece).
-- **Ibovespa com média constante:** não dá para estimar o modelo de mercado do Ibovespa contra
-  ele mesmo e nenhum índice mais amplo (ex.: MSCI Emergentes) estava na lista de ativos.
+- **Ibovespa com modelo de mercado global (EEM), só no diário** (23/10/2026, substitui a média
+  constante): `R_Ibov = α + β·R_EEM`, com o ETF iShares MSCI Emerging Markets (NYSE, USD).
+  - O fechamento da NYSE (16h em Nova York) coincide com o da B3 (17h em Brasília) até o fim do
+    horário de verão americano; os retornos diários são praticamente sincronizados.
+  - O retorno do EEM é medido entre os **mesmos dois pregões do Ibovespa** (ASOF: último
+    fechamento do ETF até cada data). Feriado só nos EUA → retorno de referência 0 naquele
+    pregão; feriado só no Brasil → o pregão seguinte acumula os dias do ETF. Não se usa preço
+    do ETF além do último coletado (o ASOF repetiria o preço e daria retorno 0).
+  - Ibovespa em reais contra ETF em dólares: o β mistura a sensibilidade às ações emergentes e
+    ao câmbio (β = 0,13 na estimação do 1º turno; 0,32 no ano). O Brasil pesa ~5% no EEM, o
+    que contamina levemente a referência no próprio dia do evento (viés conservador).
+  - Na análise horária o Ibovespa continua com média constante: as barras de 1h dos EUA
+    começam na meia hora (13:30 UTC) e não se alinham às da B3; o EEM nem é coletado em 1h.
+  - Resultado do 1º turno quase não muda: CAR de +10,72% (EEM) contra +10,50% (média constante).
 - **Dólar do BCB também analisado** (ativo `BCB_DOLAR`, só diário) com o mesmo método do
   `BRL=X`, como checagem de robustez entre fontes.
 - **Moedas de controle:** média simples dos log-retornos disponíveis no mesmo dia/hora,

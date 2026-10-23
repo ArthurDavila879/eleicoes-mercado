@@ -54,7 +54,7 @@ DuckDB é reconstruído a partir deles a cada execução.
 | Fonte | O quê | Frequência | Observações |
 |---|---|---|---|
 | [BCB / SGS](https://dadosabertos.bcb.gov.br/) | Dólar venda (série 1), euro venda (21619), meta Selic (432) | diária | códigos confirmados no catálogo de dados abertos do BCB |
-| [Yahoo Finance](https://finance.yahoo.com/) via `yfinance` | `^BVSP`, `PETR4.SA`, `VALE3.SA`, `ITUB4.SA`, `BBAS3.SA`, `BRL=X` e controles `MXN=X`, `CLP=X`, `COP=X`, `ZAR=X` | diária e 1h | horários em UTC; ações diárias ajustadas por proventos |
+| [Yahoo Finance](https://finance.yahoo.com/) via `yfinance` | `^BVSP`, `PETR4.SA`, `VALE3.SA`, `ITUB4.SA`, `BBAS3.SA`, `BRL=X`, controles `MXN=X`, `CLP=X`, `COP=X`, `ZAR=X` e mercado global `EEM` (só diário) | diária e 1h | horários em UTC; ações diárias ajustadas por proventos |
 | [GDELT DOC 2.0](https://blog.gdeltproject.org/gdelt-doc-2-0-api-debuts/) | nº de artigos e tom médio por dia | diária | mesma consulta-base para cada candidato do 2º turno |
 | `data/eventos.csv` | eventos com data/hora, tipo, descrição e fonte | — | só eventos com data certa e verificável |
 
@@ -76,8 +76,11 @@ pequena sobreposição para corrigir barras parciais).
 
 - **Ações** (PETR4, VALE3, ITUB4, BBAS3): modelo de mercado `R = α + β·R_Ibov + ε`, estimado
   por MQO na janela de estimação; `AR = R − (α̂ + β̂·R_Ibov)`.
-- **Ibovespa:** modelo de média constante (`AR = R − média`), porque não há na amostra um
-  índice de mercado mais amplo contra o qual regredi-lo.
+- **Ibovespa:** modelo de mercado global `R = α + β·R_EEM + ε` na análise diária, com o ETF
+  iShares MSCI Emerging Markets (`EEM`, NYSE) como mercado; o retorno do EEM é medido entre os
+  mesmos dois pregões do Ibovespa (feriados só de um país não desalinham as datas). Na análise
+  horária, média constante (`AR = R − média`): as barras de 1h dos EUA começam na meia hora e
+  não se alinham às da B3.
 - **Real** (`BRL=X` e o dólar do BCB): `AR = R_BRL − média(R_MXN, R_CLP, R_COP, R_ZAR)`, ou seja,
   quanto o real se moveu além do que outras moedas emergentes se moveram no mesmo dia/hora.
 - Observações da janela de estimação que caem na janela de **outro** evento são descartadas.
@@ -98,7 +101,7 @@ de 26/10 em diante. Os números atualizados estão no dashboard (`marts.resultad
 
 | Ativo | Modelo | CAR | Erro-padrão | t | p-valor | |
 |---|---|---:|---:|---:|---:|:-:|
-| Ibovespa | média constante | +10,50% | 2,31 p.p. | 4,32 | <0,0001 | *** |
+| Ibovespa | mercado global — EEM (β=0,13) | +10,72% | 2,25 p.p. | 4,52 | <0,0001 | *** |
 | Vale ON | mercado (β=0,91) | −11,69% | 3,32 p.p. | −3,74 | 0,0003 | *** |
 | Banco do Brasil ON | mercado (β=1,30) | −7,42% | 2,78 p.p. | −2,77 | 0,0066 | *** |
 | Petrobras PN | mercado (β=0,33) | +7,40% | 4,04 p.p. | 1,76 | 0,0805 | * |
@@ -110,7 +113,7 @@ de 26/10 em diante. Os números atualizados estão no dashboard (`marts.resultad
 
 | Ativo | CAR | t | p-valor | |
 |---|---:|---:|---:|:-:|
-| Ibovespa | +9,96% | 7,39 | <0,0001 | *** |
+| Ibovespa (média constante) | +9,96% | 7,39 | <0,0001 | *** |
 | Vale ON | −6,93% | −5,04 | <0,0001 | *** |
 | Petrobras PN | +2,66% | 1,32 | 0,187 | n.s. |
 | Itaú Unibanco PN | +0,62% | 0,65 | 0,519 | n.s. |
@@ -124,6 +127,10 @@ de 26/10 em diante. Os números atualizados estão no dashboard (`marts.resultad
 - No pregão seguinte ao 1º turno, o Ibovespa subiu cerca de 7,4% em um dia (8,1% só na
   primeira hora). Isso está muito fora da variação típica do período, e as frequências diária e
   horária concordam.
+- O movimento dos emergentes não explica a alta: descontado o EEM (que subiu 1,6% em 05/10), o
+  CAR do Ibovespa fica em +10,7%, praticamente igual aos +10,5% do modelo de média constante.
+  O β contra o EEM é baixo (0,13 na estimação; 0,32 no ano todo) em parte porque o Ibovespa
+  está em reais: quando os emergentes caem, o real tende a se desvalorizar e amortece a queda.
 - O real se valorizou: o USD/BRL caiu cerca de 4,5% em 05/10. Descontado o movimento médio de
   MXN, CLP, COP e ZAR, sobra um retorno anormal de −2,7% a −2,8% na janela diária. O resultado
   é o mesmo com o dólar do Yahoo e com o do BCB.
@@ -209,7 +216,8 @@ workflows, então a coleta automática não aciona o workflow de testes a cada h
 ## Estrutura
 
 ```
-├── app.py                     # dashboard Streamlit
+├── app.py                     # dashboard Streamlit (telas: Painel, Reação ao evento, Ativos, Real, GDELT, Metodologia)
+├── .streamlit/config.toml     # tema escuro do dashboard
 ├── data/
 │   ├── bruto/<fonte>/AAAA-MM.parquet
 │   └── eventos.csv

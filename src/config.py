@@ -30,7 +30,12 @@ SERIES_SGS: dict[int, str] = {
 # Todas as moedas estão cotadas como "unidades da moeda local por 1 USD".
 ATIVOS_BRASIL = ["^BVSP", "PETR4.SA", "VALE3.SA", "ITUB4.SA", "BBAS3.SA", "BRL=X"]
 MOEDAS_CONTROLE = ["MXN=X", "CLP=X", "COP=X", "ZAR=X"]
-TICKERS_YAHOO = ATIVOS_BRASIL + MOEDAS_CONTROLE
+# Mercado global para o modelo de mercado do Ibovespa: ETF iShares MSCI Emerging Markets
+# (NYSE, em USD). Só diário: as barras de 1h dos EUA começam na meia hora (13:30 UTC) e
+# não se alinham às da B3.
+MERCADO_GLOBAL = "EEM"
+TICKERS_YAHOO = ATIVOS_BRASIL + MOEDAS_CONTROLE + [MERCADO_GLOBAL]
+TICKERS_SO_DIARIO = [MERCADO_GLOBAL]
 
 # Sobreposição (re-coleta) para corrigir barras parciais/revisadas na coleta incremental
 SOBREPOSICAO_DIAS_DIARIO = 5
