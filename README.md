@@ -108,6 +108,14 @@ corrigir barras parciais) e completa sozinha o histórico que faltar antes do 1�
 - **Carteiras long-short de mesmo setor** (estatal − privada): `r = r_BBAS3 − r_ITUB4` e
   `r = r_PETR4 − r_PRIO3`, calculadas como o log-retorno da razão de preços nos pregões/barras com
   as duas cotações, e tratadas como mais um ativo, com modelo de mercado contra o Ibovespa.
+- **Mais ações** (exploratório, mesmo modelo de mercado): Petrobras ON, Bradesco, Eletrobras
+  (`AXIA3`), Sabesp, Cemig, MRV, Cogna e Magazine Luiza; e o **spread Petrobras ON − PN**
+  (`PETR3 − PETR4`), tratado como carteira.
+- **Modelo multifatorial adicional** (diário), sem substituir o simples:
+  `R = α + β_m·R_Ibov + β_f·R_fator`. Usa o Brent (`BZ=F`) para PETR4 e PETR3 e o minério de
+  ferro (`TIO=F`) para a VALE3. O retorno do fator é medido entre os mesmos pregões da ação, e
+  σ² usa n − 3 graus de liberdade. Os resultados aparecem lado a lado com o modelo de mercado
+  (`fct_modelo_multifatorial`).
 - Observações da janela de estimação que caem na janela de **outro** evento são descartadas.
 
 **CAR e significância:** `CAR = Σ AR` na janela; `t = CAR / (σ̂·√L)`, com σ̂ estimado na janela
@@ -262,6 +270,53 @@ No dia 0, a variância realizada de quase todos os ativos foi dezenas de vezes a
 causa do salto de abertura depois do fim de semana do 1º turno; o volume do Ibovespa e das ações
 ficou de três a quase sete vezes o normal. Volatilidade e volume são persistentes, o que torna o
 t otimista; o tamanho do efeito é o número mais informativo.
+
+**Ações adicionais e spread ON − PN no 1º turno de 2026** (modelo de mercado; exploratório)
+
+| Ativo | CAR diário [-1,+3] | p (t) | p (Patell) | β | CAR horário |
+|---|---:|---:|---:|---:|---:|
+| Magazine Luiza ON | +11,33% n.s. | 0,151 | 0,196 | 2,08 | +2,65% n.s. |
+| Cogna ON | +8,88% * | 0,059 | 0,055 | 1,55 | −1,67% n.s. |
+| Petrobras ON | +8,88% * | 0,062 | 0,092 | 0,32 | +2,49% n.s. |
+| Sabesp ON | +7,95% ** | 0,012 | 0,016 | 1,24 | +2,72% * |
+| Bradesco PN | +3,95% * | 0,051 | 0,114 | 1,17 | +4,76% *** |
+| MRV ON | +3,02% n.s. | 0,605 | 0,597 | 1,57 | +0,32% n.s. |
+| Spread Petrobras ON − PN | +1,38% n.s. | 0,169 | 0,115 | −0,02 | −0,17% n.s. |
+| Cemig PN | −1,73% n.s. | 0,419 | 0,559 | 1,02 | −1,42% n.s. |
+| Eletrobras ON (AXIA3) | −4,95% * | 0,051 | 0,074 | 1,34 | −1,93% n.s. |
+
+São nove testes a mais: com 10% de nível, um ou dois "*" seriam esperados só pelo acaso.
+
+**Modelo de mercado simples × multifatorial (Ibovespa + commodity)** — CAR diário [-1,+3]
+
+| Ação | Evento | Simples | Multifatorial | β do fator (p) | R² simples → multi |
+|---|---|---:|---:|---:|---:|
+| PETR4 | 2014 · 1º | +6,53% ** | +6,55% ** | 0,00 (0,980) | 0,77 → 0,77 |
+| PETR4 | 2014 · 2º | −13,41% *** | −13,38% *** | 0,08 (0,592) | 0,82 → 0,82 |
+| PETR4 | 2018 · 1º | +5,07% n.s. | +5,29% n.s. | 0,04 (0,846) | 0,45 → 0,45 |
+| PETR4 | 2018 · 2º | −6,06% n.s. | −5,92% n.s. | 0,05 (0,781) | 0,48 → 0,48 |
+| PETR4 | 2022 · 1º | +1,77% n.s. | +1,55% n.s. | 0,19 (0,003) | 0,37 → 0,42 |
+| PETR4 | 2022 · 2º | −18,08% *** | −18,13% *** | 0,22 (0,001) | 0,39 → 0,45 |
+| PETR4 | 2026 · 1º | +7,40% * | +3,90% n.s. | 0,39 (<0,0001) | 0,03 → 0,58 |
+| PETR3 | 2026 · 1º | +8,88% * | +4,95% n.s. | 0,44 (<0,0001) | 0,03 → 0,57 |
+| VALE3 | 2014 · 1º | −5,62% * | −5,86% ** | 0,14 (0,191) | 0,21 → 0,22 |
+| VALE3 | 2014 · 2º | −14,05% *** | −14,21% *** | 0,17 (0,135) | 0,18 → 0,19 |
+| VALE3 | 2022 · 2º | −1,37% n.s. | +0,79% n.s. | 0,29 (0,0003) | 0,44 → 0,51 |
+| VALE3 | 2026 · 1º | −11,69% *** | −11,44% *** | 0,22 (0,199) | 0,29 → 0,30 |
+
+(A tabela completa, com todos os eventos e a PETR3, está no dashboard e em
+`fct_modelo_multifatorial`.)
+
+**Leitura:**
+
+- **Petrobras em 2026:** o Brent explica a maior parte da variação da ação no período de
+  estimação (R² de 0,03 para 0,58). Descontado o petróleo, o CAR do 1º turno cai de +7,4% para
+  +3,9% e deixa de ser significativo: parte do que o modelo simples chamava de anormal acompanhou
+  o petróleo.
+- **Petrobras em 2014 e 2018:** o Brent quase não muda nada (β ≈ 0), e os resultados dos dois
+  modelos coincidem.
+- **Vale:** o minério de ferro acrescenta pouco ao R² (de 0 a +0,07), coerente com a fragilidade
+  da série `TIO=F` (ver `DECISOES.md`). As conclusões sobre a Vale não mudam.
 
 **Eleições de 2014 a 2026 — CAR diário [-1,+3]** (mesma metodologia em todos os eventos)
 

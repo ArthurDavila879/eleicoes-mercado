@@ -127,3 +127,11 @@ models:
       - combinacao_unica:
           arguments:
             colunas: [grupo, ativo]
+
+  - name: fct_modelo_multifatorial
+    description: Modelo de dois fatores (Ibovespa + commodity) lado a lado com o modelo de mercado simples
+    config: *config_robustez
+    tests:
+      - combinacao_unica:
+          arguments:
+            colunas: [evento_id, ativo, fator]

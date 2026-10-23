@@ -90,6 +90,10 @@ def _dados_sinteticos(dir_bruto):
         linhas.append(pd.DataFrame({
             "ticker": ticker, "data": dias, "abertura": p, "maxima": p, "minima": p,
             "fechamento": p, "fechamento_ajustado": p, "volume": volume}))
+    # Brent sintético (fator do modelo multifatorial), independente da PETR4
+    p = _precos(rng_ls.normal(0, 0.015, n))
+    linhas.append(pd.DataFrame({"ticker": "BZ=F", "data": dias, "abertura": p, "maxima": p, "minima": p,
+                                "fechamento": p, "fechamento_ajustado": p, "volume": 0.0}))
     armazenamento.salvar_incremental(pd.concat(linhas), "yahoo_diario", ["ticker", "data"], "data", dir_bruto)
 
 
@@ -299,3 +303,13 @@ def test_caar_com_um_evento(banco):
     car = _resultado(banco, "PETR4.SA", "diaria")[1]
     assert linha[0] == 1 and linha[1] == pytest.approx(car) and linha[2] < 0.01
     assert linha[3] is None or np.isnan(linha[3])  # transversal exige 3 eventos
+
+
+
+def test_multifatorial_detecta_choque_com_fator_irrelevante(banco):
+    status, car, p_valor, p_beta, car_simples = banco.execute(
+        "select status, car, p_valor, p_beta_fator, car_simples from marts.fct_modelo_multifatorial "
+        "where ativo = 'PETR4.SA' and evento_id = 1").fetchone()
+    assert status == "completo" and p_valor < 0.01
+    assert car == pytest.approx(car_simples, abs=0.005)  # o Brent sintético não explica a PETR4
+    assert p_beta > 0.01

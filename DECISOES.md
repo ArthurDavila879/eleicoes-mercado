@@ -308,3 +308,19 @@ Decisões tomadas de forma autônoma durante a construção do projeto, com a ju
   Grupos: todos, 1º turnos e 2º turnos (turno lido da descrição, "1º turno"/"2º turno").
 - **Rótulo dos eventos com ano** no dashboard ("1º turno 2014"); "No ano" dos cards passou a
   contar desde o último fechamento do ano anterior (a série agora começa em 2014).
+
+## Ações adicionais, spread e modelo multifatorial (rodada 3, bloco C, 23/10/2026)
+- **Ações novas analisadas com o mesmo modelo de mercado** e todos os testes (robustez,
+  placebo, sensibilidade). Ficam fora da família do Holm: são exploratórias e não estavam no
+  pré-registro confirmatório. O README avisa sobre comparações múltiplas.
+- **Spread PETR3 − PETR4** como carteira long-short (razão de preços, como as demais), com modelo
+  de mercado; β ≈ 0, como esperado para duas classes da mesma empresa.
+- **Multifatorial em Python** (`src/estatistica/multifatorial.py`): MQO com intercepto e dois
+  fatores, σ² = SQR/(n − 3), t com n − 3 gl, mesmas regras de dia 0, janelas, exclusões e mínimos.
+  Retorno do fator entre os mesmos dois pregões da ação (último preço do fator até cada data),
+  sem usar preço além do último coletado. Teste do β do fator (p) e R² dos dois modelos na mesma
+  amostra de estimação, para mostrar o ganho.
+- **Só diário:** o Brent e o minério não são coletados de hora em hora, e as barras de 1h dos
+  futuros americanos não se alinham às da B3.
+- **Fatores definidos em `dbt/seeds/modelos_multifatoriais.csv`** (PETR4/PETR3 → `BZ=F`; VALE3 →
+  `TIO=F`), lado a lado com o modelo simples de `resultados_eventos`.
