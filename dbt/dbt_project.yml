@@ -29,6 +29,9 @@ vars:
   min_obs_estimacao_horaria: 150
   # Mercado global do modelo do Ibovespa (só na análise diária; ver DECISOES.md)
   ativo_mercado_global: "EEM"
+  # Eventos antes desta data só entram na análise diária (não há barras de 1h tão antigas;
+  # eleições de 2014, 2018 e 2022)
+  inicio_analise_horaria: "2025-01-01"
   # Nº mínimo de moedas de controle com cotação no mesmo dia/hora
   min_moedas_controle: 2
   # Pico isolado no Yahoo diário (log): afasta-se mais que isso dos dois vizinhos e reverte

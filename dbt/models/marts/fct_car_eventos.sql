@@ -25,6 +25,9 @@ with combinacoes as (
     where a.modelo_retorno_normal <> 'nenhum'
       -- o dólar do BCB/SGS é diário: não entra na análise horária
       and not (f.frequencia = 'horaria' and a.ativo = 'BCB_DOLAR')
+      -- eleições anteriores (2014–2022): só diária, não há barras de 1h dessa época
+      and not (f.frequencia = 'horaria'
+               and e.data_hora_utc < cast('{{ var("inicio_analise_horaria") }}' as timestamp))
 ),
 
 agregado as (

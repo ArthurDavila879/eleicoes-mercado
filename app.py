@@ -193,9 +193,12 @@ def selo(variacao: float | None) -> str:
 
 
 def rotulo_curto(ev) -> str:
-    """'1º turno' a partir de '1º turno: encerramento...'; cai no #id se não houver prefixo."""
+    """'1º turno 2026' a partir de '1º turno: encerramento...' e da data; cai no #id se não
+    houver prefixo curto."""
     prefixo = str(ev["descricao"]).split(":")[0].strip()
-    return prefixo if len(prefixo) <= 25 else f"#{ev['evento_id']}"
+    rotulo = prefixo if len(prefixo) <= 25 else f"#{ev['evento_id']}"
+    data = ev.get("data_hora_local") if hasattr(ev, "get") else None
+    return f"{rotulo} {pd.Timestamp(data):%Y}" if data is not None and not pd.isna(data) else rotulo
 
 
 # ---------------- Gráficos ----------------
@@ -276,9 +279,13 @@ with st.sidebar:
     st.divider()
     rotulos_evento = {
         int(r.evento_id): f"{rotulo_curto(r._asdict())} · {r.data_hora_local:%d/%m/%Y %H:%M}"
-        for r in eventos.itertuples()
+        for r in eventos.sort_values("data_hora_utc", ascending=False).itertuples()
     }
-    evento_id = (st.selectbox("Evento analisado", list(rotulos_evento), format_func=rotulos_evento.get)
+    # Padrão: o evento mais recente que já tem resultado diário
+    com_dados = set(resultados.loc[resultados["p_valor"].notna(), "evento_id"].astype(int))
+    padrao = next((i for i, e in enumerate(rotulos_evento) if e in com_dados), 0)
+    evento_id = (st.selectbox("Evento analisado", list(rotulos_evento), index=padrao,
+                              format_func=rotulos_evento.get)
                  if rotulos_evento else None)
     st.caption("Horários em America/Sao_Paulo (UTC−3). Fontes: BCB/SGS, Yahoo Finance, GDELT.")
     st.divider()
@@ -306,7 +313,7 @@ def resumo_evento() -> None:
         st.info("Nenhum evento cadastrado em `data/eventos.csv`.")
         return
     with st.container(border=True):
-        st.markdown(f"#### :material/event: {rotulo_curto({'descricao': evento['descricao'], 'evento_id': evento_id})}"
+        st.markdown(f"#### :material/event: {rotulo_curto({'descricao': evento['descricao'], 'evento_id': evento_id, 'data_hora_local': evento['data_hora_local']})}"
                     f" — {evento['data_hora_local']:%d/%m/%Y às %H:%M}")
         st.caption(f"{evento['descricao']} · [fonte]({evento['fonte_url']})")
         diario = res_evento[res_evento["frequencia"] == "diaria"].set_index("ativo")
@@ -362,7 +369,9 @@ def card_ativo(i: int, ativo: str, serie: pd.Series, car_diario: pd.DataFrame) -
     var_dia = 100 * (ultimo / serie.iloc[-2] - 1) if len(serie) > 1 else None
     base_30 = serie[serie.index <= serie.index[-1] - timedelta(days=30)]
     var_30 = 100 * (ultimo / base_30.iloc[-1] - 1) if not base_30.empty else None
-    var_ano = 100 * (ultimo / serie.iloc[0] - 1)
+    # No ano: desde o último fechamento do ano anterior (a série vai até 2014)
+    base_ano = serie[serie.index < pd.Timestamp(year=serie.index[-1].year, month=1, day=1)]
+    var_ano = 100 * (ultimo / (base_ano.iloc[-1] if not base_ano.empty else serie.iloc[0]) - 1)
     car_txt = "—"
     if ativo in car_diario.index and car_diario.loc[ativo, "status"] in ("completo", "janela_parcial"):
         linha = car_diario.loc[ativo]

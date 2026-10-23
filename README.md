@@ -131,6 +131,31 @@ que a reimplementação reproduz exatamente o CAR, o t e o p-valor dos modelos S
 | **Placebo** | a mesma metodologia em até 1000 datas sem evento por ativo (sem reposição, semente 20261025), fora das janelas reais; p-valor empírico `(1 + #{\|CAR_placebo\| ≥ \|CAR_real\|}) / (1 + n)`. Versão principal: pseudodia 0 no 1º pregão após um dia sem pregão (ou na 1ª barra do pregão), como num evento de domingo; versão "qualquer dia" como sensibilidade | `fct_placebo_distribuicao`, `fct_placebo_resultados` |
 | **Sensibilidade de janela** | CAR e p-valor (t principal) em [0,0], [0,+1], [-1,+3] (principal) e [-5,+5] pregões | `fct_sensibilidade_janelas` |
 
+### Eleições anteriores e análise agregada (só diária)
+
+`data/eventos.csv` traz também o 1º e o 2º turno de **2014, 2018 e 2022**, com a mesma
+metodologia diária: mesmo modelo de cada ativo, janela [-1,+3] e estimação [-120,-11]. Não há
+análise horária nesses anos, porque não existem barras de 1h tão antigas
+(`inicio_analise_horaria`). A hora de cada evento é a do início da divulgação oficial:
+
+- **2014 e 2018:** a divulgação para presidente só começava quando a votação terminava no Acre
+  (17h locais): 19h de Brasília, ou 20h no 2º turno de 2014, com Brasília em horário de verão;
+- **2022:** horário unificado, com a votação terminando às 17h de Brasília.
+
+As fontes estão no CSV (Agência Câmara, Rádio Senado, TSE). Como todos os eventos são num
+domingo à noite, o dia 0 é sempre a segunda-feira seguinte.
+
+A análise agregada (`fct_caar_eventos`) junta os eventos de cada ativo (todos, só 1º turnos, só
+2º turnos):
+
+- **CAAR**: média dos CAR;
+- **t agregado**: `Σ CAR / √Σ ep²`, com as variâncias da estimação;
+- **t transversal**: média sobre o erro-padrão entre eventos, com N − 1 gl;
+- **qui-quadrado sem direção**: `Σ t²`, com N gl.
+
+O último teste é o mais neutro: eleições diferentes podem mover o preço em sentidos opostos e a
+média com sinal se cancelaria; ele pergunta só se houve reação anormal, em qualquer direção.
+
 ### Volatilidade e volume anormais
 
 Na janela diária, com o mesmo dia 0 e a mesma estimação [-120,-11] (`fct_atividade_anormal`):
@@ -238,6 +263,44 @@ causa do salto de abertura depois do fim de semana do 1º turno; o volume do Ibo
 ficou de três a quase sete vezes o normal. Volatilidade e volume são persistentes, o que torna o
 t otimista; o tamanho do efeito é o número mais informativo.
 
+**Eleições de 2014 a 2026 — CAR diário [-1,+3]** (mesma metodologia em todos os eventos)
+
+| Ativo | 2014 · 1º | 2014 · 2º | 2018 · 1º | 2018 · 2º | 2022 · 1º | 2022 · 2º | 2026 · 1º |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Ibovespa | +5,47% ** | +0,13% n.s. | +2,71% n.s. | +2,88% n.s. | +6,28% *** | −0,55% n.s. | +10,72% *** |
+| Petrobras PN | +6,53% ** | −13,41% *** | +5,07% n.s. | −6,06% n.s. | +1,77% n.s. | −18,08% *** | +7,40% * |
+| Vale ON | −5,62% * | −14,05% *** | −5,52% n.s. | +1,46% n.s. | −1,30% n.s. | −1,37% n.s. | −11,69% *** |
+| Itaú Unibanco PN | −0,83% n.s. | +5,64% *** | +0,51% n.s. | −2,28% n.s. | −2,42% n.s. | +0,26% n.s. | −0,03% n.s. |
+| Banco do Brasil ON | +12,68% *** | +4,17% n.s. | +6,38% * | −1,09% n.s. | −3,32% n.s. | −1,82% n.s. | −7,42% *** |
+| Real — USD/BRL (Yahoo) | −3,75% * | −3,16% n.s. | −2,55% n.s. | −0,98% n.s. | −3,18% n.s. | −5,89% *** | −2,82% ** |
+| Real — USD/BRL (BCB) | −3,37% n.s. | −2,92% n.s. | −4,23% ** | −0,82% n.s. | −3,45% * | −5,05% ** | −2,66% ** |
+
+**Análise agregada — todos os eventos com dados (7)** (p-valores bicaudais)
+
+| Ativo | CAAR | CAR > 0 | t agregado | t transversal | qui² sem direção |
+|---|---:|---:|---:|---:|---:|
+| Ibovespa | +3,89% | 6/7 | <0,0001 | 0,035 | <0,0001 |
+| Petrobras PN | −2,88% | 4/7 | 0,105 | 0,503 | <0,0001 |
+| Vale ON | −5,59% | 1/7 | <0,0001 | 0,047 | <0,0001 |
+| Itaú Unibanco PN | +0,09% | 3/7 | 0,910 | 0,932 | 0,151 |
+| Banco do Brasil ON | +1,18% | 3/7 | 0,377 | 0,656 | 0,0008 |
+| Real — USD/BRL (Yahoo) | −3,20% | 0/7 | 0,0001 | 0,0013 | 0,0055 |
+| Real — USD/BRL (BCB) | −3,22% | 0/7 | <0,0001 | 0,0007 | 0,0023 |
+
+Por turno (dashboard e `fct_caar_eventos`):
+
+- **1º turnos (4):** Ibovespa +6,3% (4 de 4 positivos), real −3,1% (4 de 4 com o real mais forte
+  que os pares), Vale −6,1%.
+- **2º turnos (3):** as médias se cancelam mais. A Petrobras tem CAAR de −12,7%, mas o t
+  transversal dá p = 0,077 com só 3 eventos; no Ibovespa o CAAR fica perto de zero.
+
+**Leitura (descritiva):** a análise agregada distingue duas coisas. Primeiro, se há reação
+anormal em qualquer direção: o qui-quadrado rejeita para Ibovespa, Petrobras, Vale, Banco do
+Brasil e real. Segundo, se a reação vai sempre para o mesmo lado: o CAAR com sinal só é robusto
+(t agregado e transversal) para o Ibovespa, a Vale e o real. O real se valorizou contra os pares
+emergentes na janela de **todas** as sete eleições. Com 7 eventos, o t transversal tem pouco
+poder, e cada eleição continua sendo um caso com contexto próprio.
+
 **Robustez do 1º turno — janela diária [-1,+3]** (p-valores bicaudais)
 
 | Ativo | t (principal) | Patell | BMP | Corrado | Placebo | Placebo (qualquer dia) | Holm |
@@ -286,8 +349,10 @@ Placebo com 200 datas elegíveis por ação (186 no `BRL=X`) na versão principa
 
 ## Limitações
 
-- **Poucos eventos.** Com dois eventos (1º e 2º turno), não há poder estatístico para
-  generalizações; cada resultado é um estudo de caso.
+- **Poucos eventos.** Mesmo com 2014–2026 são 7 eventos com dados (8 com o 2º turno de 2026):
+  pouco poder para a análise agregada transversal; cada eleição é também um estudo de caso.
+- **Eleições anteriores só no diário** e com os mesmos ativos de hoje (a Eletrobras aparece como
+  `AXIA3`); a composição e o peso dos ativos no índice mudaram ao longo da década.
 - **Eventos sobrepostos.** Notícias, pesquisas e choques globais (juros nos EUA, commodities)
   acontecem nos mesmos dias. O controle por moedas emergentes e pelo Ibovespa reduz, mas não
   elimina, essa contaminação; a janela de 5 pregões é longa o bastante para pegar outros fatos.

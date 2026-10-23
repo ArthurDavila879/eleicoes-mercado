@@ -287,3 +287,15 @@ def test_atualizacao_das_fontes_em_dias_uteis(banco, monkeypatch, tmp_path, hoje
         "--select", "tag:atualizacao", "--vars", f"{{data_referencia_atualizacao: '{hoje}'}}",
         "--target-path", str(tmp_path / "target"), "--log-path", str(tmp_path / "logs")])
     assert ok is atualizado
+
+
+
+# --- Rodada 3: análise agregada entre eventos ---------------------------------------------
+
+def test_caar_com_um_evento(banco):
+    linha = banco.execute(
+        "select n_eventos, caar, p_agregado, t_transversal from marts.fct_caar_eventos "
+        "where grupo = 'todos' and ativo = 'PETR4.SA'").fetchone()
+    car = _resultado(banco, "PETR4.SA", "diaria")[1]
+    assert linha[0] == 1 and linha[1] == pytest.approx(car) and linha[2] < 0.01
+    assert linha[3] is None or np.isnan(linha[3])  # transversal exige 3 eventos

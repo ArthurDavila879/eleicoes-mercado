@@ -65,7 +65,8 @@ def carregar(caminho: Path | None = None) -> pd.DataFrame:
     df = df.copy()
     instantes = df["data_hora"].map(lambda v: pd.Timestamp(v).tz_convert("UTC"))
     df["data_hora_utc"] = pd.to_datetime(instantes).dt.tz_localize(None).astype("datetime64[us]")
-    df = df.sort_values(["data_hora_utc", "tipo", "descricao"]).reset_index(drop=True)
+    # evento_id = ordem da linha no arquivo: acrescentar eventos (inclusive mais antigos) no
+    # fim não muda os ids existentes, citados no README e no PRE_REGISTRO.md
     df.insert(0, "evento_id", range(1, len(df) + 1))
     return df
 

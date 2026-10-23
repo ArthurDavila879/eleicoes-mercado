@@ -172,3 +172,13 @@ Esclarecimentos e desvios da Fase 2, registrados em 23/10/2026, **antes** da vot
    estatística do teste principal com média constante, `t = Σ(x − média) / (dp·√L)`, com n − 1
    graus de liberdade.
 7. **PRIO3** entra só como ponta da carteira long-short, não como ativo isolado.
+
+Análises exploratórias acrescentadas em 23/10/2026, **antes** da votação, fora do plano
+confirmatório acima (não entram na família do Holm nem mudam o teste principal):
+
+8. Eleições de 2014, 2018 e 2022 (diário) e análise agregada entre eventos (CAAR, t agregado,
+   t transversal e qui-quadrado sem direção).
+9. Novas ações (PETR3, BBDC4, AXIA3/Eletrobras, SBSP3, CMIG4, MRVE3, COGN3, MGLU3), spread
+   PETR3 − PETR4, modelos multifatoriais (PETR4/PETR3 com Ibovespa + Brent; VALE3 com Ibovespa +
+   minério de ferro) e dólar implícito no bitcoin (BTCBRL/BTCUSDT, domingo 17h → segunda 10h).
+   Todos com hipóteses bicaudais e a mesma metodologia dos demais ativos.

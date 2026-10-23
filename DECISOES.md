@@ -279,3 +279,32 @@ Decisões tomadas de forma autônoma durante a construção do projeto, com a ju
 - **Teste de plausibilidade:** limite subiu de 0,5 para 0,7 em log (o salto real da PRIO3 em 2016
   passaria de 0,5) e vale só para os ativos usados nos modelos; fatores globais e cripto ficam
   fora (o VIX sobe 77% num dia).
+
+## Eleições anteriores e análise agregada (rodada 3, bloco B, 23/10/2026)
+- **Eventos de 2014, 2018 e 2022 em `data/eventos.csv`**, hora = início da divulgação oficial
+  dos resultados para presidente, cada um com fonte:
+  - 2014 1º turno, 19h: Agência Câmara de 05/10/2014;
+  - 2014 2º turno, 20h com Brasília em horário de verão (UTC−2): Rádio Senado de 16/10/2014;
+  - 2018 1º turno, 19h: Agência Câmara de 07/10/2018;
+  - 2018 2º turno, 19h: notícia do TSE (Res. 23.554, art. 239: dados de presidente só a partir
+    das 17h do Acre);
+  - 2022, 17h de Brasília: TSE (horário unificado, Res. 23.669).
+
+  O fuso de 2014 com horário de verão está no próprio ISO 8601 (`-02:00`); o `stg_eventos` usa
+  UTC−3 fixo só para calcular a data e a hora local, e como todos os eventos são num domingo à
+  noite, o dia 0 é a segunda-feira seguinte em qualquer caso.
+- **`evento_id` = ordem da linha no arquivo** (antes, ordem cronológica). Com os eventos antigos
+  no fim do CSV, os de 2026 continuam com ids 1 e 2, que o pré-registro e o README citam. O
+  dashboard ordena por data e abre no evento mais recente que já tem resultado.
+- **Só análise diária antes de 2025** (var `inicio_analise_horaria`, teste
+  `assert_eventos_antigos_so_diarios`); a volatilidade realizada (barras de 1h) também fica só
+  para 2026. O volume entra para todos os anos.
+- **Placebo só para eventos desde 2023:** a distribuição placebo vem de 2023–2026 e comparar com
+  ela um CAR de 2014 misturaria regimes de volatilidade diferentes. Patell, BMP, Corrado,
+  sensibilidade de janela e Holm valem para todos os eventos.
+- **CAAR e três testes:** t agregado (variâncias da estimação, eventos independentes), t
+  transversal (dispersão entre eventos, N ≥ 3) e qui-quadrado sem direção (`Σ t²`). O último foi
+  incluído por neutralidade: não supõe que todas as eleições movam o preço no mesmo sentido.
+  Grupos: todos, 1º turnos e 2º turnos (turno lido da descrição, "1º turno"/"2º turno").
+- **Rótulo dos eventos com ano** no dashboard ("1º turno 2014"); "No ano" dos cards passou a
+  contar desde o último fechamento do ano anterior (a série agora começa em 2014).

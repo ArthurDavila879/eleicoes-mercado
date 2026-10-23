@@ -164,9 +164,15 @@ def placebo(
     return pd.concat(distribuicoes, ignore_index=True).reindex(columns=colunas)
 
 
-def resultados_placebo(resultados: pd.DataFrame, distribuicao: pd.DataFrame) -> pd.DataFrame:
+def resultados_placebo(
+    resultados: pd.DataFrame, distribuicao: pd.DataFrame, inicio: str | None = None
+) -> pd.DataFrame:
     """p-valor empírico do CAR real (só onde o teste principal tem p-valor) contra a
-    distribuição placebo do mesmo ativo × frequência × versão."""
+    distribuição placebo do mesmo ativo × frequência × versão. Com ``inicio``, só eventos a
+    partir dessa data: a distribuição vem de 2023 em diante, e comparar com ela um CAR de
+    outra época (outro regime de volatilidade) não seria um placebo da mesma série."""
+    if inicio is not None:
+        resultados = resultados[pd.to_datetime(resultados["data_hora_local"]) >= pd.Timestamp(inicio)]
     linhas = []
     for (freq, ativo, versao), d in distribuicao.groupby(["frequencia", "ativo", "versao"]):
         cars = d["car"].to_numpy(dtype=float)
@@ -209,6 +215,7 @@ def ler_parametros(bruto) -> dict:
         placebo_n=int(v["placebo_n"]),
         placebo_semente=int(v["placebo_semente"]),
         placebo_inicio=v.get("placebo_inicio"),
+        inicio_analise_horaria=v.get("inicio_analise_horaria"),
         fuso_offset_horas=int(v.get("fuso_offset_horas", -3)),
         hora_corte_pregao=int(v.get("hora_corte_pregao", 17)),
     )
