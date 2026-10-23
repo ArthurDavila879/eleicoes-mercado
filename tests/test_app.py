@@ -40,11 +40,11 @@ def test_dashboard_com_dados(monkeypatch, tmp_path, banco):  # noqa: F811
 
     menu = app.sidebar.radio[0]
     telas = list(menu.options)
-    assert len(telas) == 7
+    assert len(telas) == 8
     # Percorre todas as telas, no evento com dados e no evento futuro (sem dados)
     for evento_id in (1, 2):
         app.sidebar.selectbox[0].set_value(evento_id).run()
-        for tela in ["painel", "evento", "tempo", "real", "noticias", "robustez", "metodo"]:
+        for tela in ["painel", "evento", "tempo", "real", "noticias", "atividade", "robustez", "metodo"]:
             app.sidebar.radio[0].set_value(tela).run()
             assert not app.exception, (evento_id, tela, app.exception)
             if tela == "evento":

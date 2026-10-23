@@ -19,6 +19,7 @@ EVENTO_LOCAL = "2026-06-15T12:00:00-03:00"  # segunda-feira, durante o pregão
 CHOQUE_DIARIO = 0.08
 CHOQUE_HORARIO = 0.03
 BETA_PETR4 = 1.2
+CHOQUE_LONG_SHORT = 0.06
 BETA_IBOV_EEM = 0.8
 FERIADO_EUA = pd.Timestamp("2026-05-25")  # Memorial Day: B3 abre, NYSE fecha
 
@@ -75,6 +76,21 @@ def _dados_sinteticos(dir_bruto):
             "minima": p, "fechamento": p, "volume": 1000.0}))
     armazenamento.salvar_incremental(
         pd.concat(linhas), "yahoo_horario", ["ticker", "data_hora_utc"], "data_hora_utc", dir_bruto)
+
+    # --- carteira long-short (Fase 2): BBAS3 com choque, ITUB4 sem; gerador próprio para não
+    # mudar os sorteios acima ---
+    rng_ls = np.random.default_rng(99)
+    r_bbas = 1.0 * r_ibov + rng_ls.normal(0, 0.004, n)
+    r_bbas[dia0] += CHOQUE_LONG_SHORT
+    r_itub = 0.9 * r_ibov + rng_ls.normal(0, 0.004, n)
+    linhas = []
+    for ticker, r in {"BBAS3.SA": r_bbas, "ITUB4.SA": r_itub}.items():
+        p = _precos(r)
+        volume = np.exp(rng_ls.normal(15, 0.2, n))
+        linhas.append(pd.DataFrame({
+            "ticker": ticker, "data": dias, "abertura": p, "maxima": p, "minima": p,
+            "fechamento": p, "fechamento_ajustado": p, "volume": volume}))
+    armazenamento.salvar_incremental(pd.concat(linhas), "yahoo_diario", ["ticker", "data"], "data", dir_bruto)
 
 
 @pytest.fixture(scope="module")
@@ -195,9 +211,9 @@ def test_holm_na_familia_principal(banco):
         "select ativo, p_valor, p_valor_holm, n_familia_holm from marts.fct_testes_robustez "
         "where frequencia = 'diaria' and evento_id = 1 and familia_principal "
         "and p_valor is not null").fetchall()
-    # Nos dados sintéticos só há ^BVSP, PETR4.SA e BRL=X da família
-    assert {l[0] for l in linhas} == {"^BVSP", "PETR4.SA", "BRL=X"}
-    assert all(l[3] == 3 and l[2] >= l[1] for l in linhas)
+    # Nos dados sintéticos não há VALE3.SA: a família fica com 5 p-valores
+    assert {l[0] for l in linhas} == {"^BVSP", "PETR4.SA", "BRL=X", "BBAS3.SA", "ITUB4.SA"}
+    assert all(l[3] == 5 and l[2] >= l[1] for l in linhas)
 
 
 def test_placebo_detecta_choque_e_nao_o_ibovespa(banco):
@@ -218,3 +234,39 @@ def test_sensibilidade_de_janela(banco):
         "where ativo = 'PETR4.SA' and evento_id = 1").fetchall())
     assert set(p) == {"[0,0]", "[0,+1]", "[-1,+3]", "[-5,+5]"}
     assert all(v < 0.01 for v in p.values())  # todas contêm o dia 0 do choque
+
+
+
+# --- Fase 2: carteira long-short e atividade anormal ---------------------------------
+
+def test_long_short_detecta_choque_da_ponta_comprada(banco):
+    status, car, p_valor, *_ = _resultado(banco, "LS_BBAS3_ITUB4", "diaria")
+    assert status == "completo"
+    assert car == pytest.approx(CHOQUE_LONG_SHORT, abs=0.02)
+    assert p_valor < 0.01
+
+
+def test_long_short_e_a_diferenca_dos_log_retornos(banco):
+    dif = banco.execute(
+        "select max(abs(c.log_retorno - (l.log_retorno - s.log_retorno))) "
+        "from intermediario.int_retornos_diarios c "
+        "join intermediario.int_retornos_diarios l on l.ativo = 'BBAS3.SA' and l.tempo = c.tempo "
+        "join intermediario.int_retornos_diarios s on s.ativo = 'ITUB4.SA' and s.tempo = c.tempo "
+        "where c.ativo = 'LS_BBAS3_ITUB4'").fetchone()[0]
+    assert dif < 1e-12
+
+
+def test_ponta_vendida_sem_choque_nao_significativa(banco):
+    _, _, p_valor, *_ = _resultado(banco, "ITUB4.SA", "diaria")
+    assert p_valor > 0.05
+
+
+def test_atividade_anormal_calculada(banco):
+    linhas = banco.execute(
+        "select medida, ativo, status, p_valor from marts.fct_atividade_anormal where evento_id = 1"
+    ).fetchall()
+    medidas = {(m, a): (st, p) for m, a, st, p in linhas}
+    assert medidas[("volume", "BBAS3.SA")][0] == "completo"
+    assert medidas[("volume", "BBAS3.SA")][1] > 0.05  # volume sem choque
+    # Barras de 1h só desde abril: menos de 60 dias de estimação antes de 15/06
+    assert medidas[("volatilidade_realizada", "PETR4.SA")][0] == "estimacao_insuficiente"

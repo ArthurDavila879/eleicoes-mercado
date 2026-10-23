@@ -183,3 +183,32 @@ Decisões tomadas de forma autônoma durante a construção do projeto, com a ju
   e registra o m usado (`n_familia_holm`).
 - **Sensibilidade:** as janelas alternativas usam a mesma estimação [-120,-11] e excluem da
   estimação só as janelas principais [-1,+3] dos outros eventos.
+
+## Análises adicionais (Fase 2, 23/10/2026)
+- **Long-short como "preço" sintético no staging:** a razão `P_long / P_short` nos pregões (ou
+  barras) em que os dois ativos têm cotação; o log-retorno da razão é exatamente
+  `r_long − r_short` (teste de integração confere). Assim a carteira passa por todo o pipeline sem
+  código novo: modelo de mercado contra o Ibovespa, AR, CAR, Patell/BMP/Corrado, placebo e
+  sensibilidade. Pares em `dbt/seeds/carteiras.csv`.
+- **PRIO3 só como ponta da carteira** (`modelo_retorno_normal = nenhum` no seed): o pré-registro
+  não a lista como ativo do estudo. Nome no seed: "PRIO ON" (a PetroRio virou PRIO S.A.).
+- **Dados da PRIO3 no git:** coletados localmente desde 2023, mas commitados só os meses até
+  set/2026. Os arquivos de out/2026 são reescritos de hora em hora pela coleta da CI; commitá-los
+  daqui geraria conflito binário no push. A próxima coleta da CI baixa o mês corrente da PRIO3
+  sozinha (o ticker já está na lista). Até lá, no repositório, a carteira PETR4 − PRIO3 aparece
+  como `aguardando_dados` no 1º turno; os números do README vêm da base local completa.
+- **Volatilidade realizada:** variância realizada diária das barras de 1h, em log (a distribuição
+  é muito assimétrica); dias com menos da metade das barras típicas do ativo são descartados
+  (pregão em andamento ou lacunas). Inclui a barra de abertura com o intervalo noturno/fim de
+  semana, porque o dia 0 do evento é justamente esse intervalo.
+- **Volume:** `ln(1 + V)` do volume diário do Yahoo, só para ativos com volume (moedas vêm com 0).
+- **Teste do nível anormal = estudo de evento com média constante** sobre a série em log,
+  reaproveitando `estudo_evento.estudo` (mesmo dia 0, janelas, exclusões e mínimos). Não há
+  placebo nem testes de robustez para essas medidas (não previstos no pré-registro).
+- **Tesouro Direto omitido:** o CSV do Tesouro Transparente (`precotaxatesourodireto.csv`)
+  respondeu HTTP 429 em todas as tentativas de 23/10/2026 (com e sem user-agent de navegador,
+  com minutos de intervalo), embora a API CKAN do catálogo respondesse; o JSON
+  `treasurybondsinfo.json` do Tesouro Direto responde HTTP 410. O catálogo indicava última
+  atualização em 16/10, uma semana de atraso. O pré-registro previa omitir a análise nesse caso.
+  Alternativas para o futuro: ANBIMA (taxas indicativas, exige cadastro) ou a curva de DI futuro
+  da B3.

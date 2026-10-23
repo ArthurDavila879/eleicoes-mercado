@@ -161,3 +161,14 @@ Esclarecimentos de implementação da Fase 1, registrados em 23/10/2026, **antes
    mínima e pelo menos metade das observações da janela).
 4. **Placebo, sementes:** uma sequência por ativo × frequência × versão, derivada da semente
    20261025 (`numpy.random.default_rng([20261025, crc32("ativo|frequência|versão")])`).
+
+Esclarecimentos e desvios da Fase 2, registrados em 23/10/2026, **antes** da votação:
+
+5. **Juros (seção 6.4) omitidos:** a fonte do Tesouro Transparente não estava acessível de forma
+   confiável (HTTP 429 em todas as tentativas; detalhes em `DECISOES.md`), como previsto no
+   próprio texto da seção 6.4.
+6. **Volatilidade realizada:** dias com menos da metade das barras de 1h típicas do ativo são
+   descartados (pregão em andamento ou lacunas de dados). O teste do acumulado usa a mesma
+   estatística do teste principal com média constante, `t = Σ(x − média) / (dp·√L)`, com n − 1
+   graus de liberdade.
+7. **PRIO3** entra só como ponta da carteira long-short, não como ativo isolado.

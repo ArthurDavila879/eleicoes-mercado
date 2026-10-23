@@ -35,8 +35,23 @@ bcb as (
         'bcb_sgs' as fonte
     from {{ source('bruto', 'bcb_sgs') }}
     where serie_nome = 'dolar_venda'
+),
+
+yahoo_validos as (
+    select * from yahoo where preco > 0 and data is not null
+),
+
+-- Carteiras long-short (comprada em ativo_long, vendida em ativo_short): o "preço" é a razão
+-- P_long / P_short, cujo log-retorno é r_long − r_short entre dois pregões com os dois preços
+long_short as (
+    select c.carteira as ativo, l.data, l.preco / s.preco as preco, 'carteira' as fonte
+    from {{ ref('carteiras') }} c
+    join yahoo_validos l on l.ativo = c.ativo_long
+    join yahoo_validos s on s.ativo = c.ativo_short and s.data = l.data
 )
 
-select * from yahoo where preco > 0 and data is not null
+select * from yahoo_validos
 union all
 select * from bcb where preco > 0
+union all
+select * from long_short

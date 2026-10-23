@@ -35,7 +35,8 @@ SERIES_SGS: dict[int, str] = {
 # --- Yahoo Finance ---
 # Ativos brasileiros (Ibovespa, ações e real) e moedas de controle (emergentes).
 # Todas as moedas estão cotadas como "unidades da moeda local por 1 USD".
-ATIVOS_BRASIL = ["^BVSP", "PETR4.SA", "VALE3.SA", "ITUB4.SA", "BBAS3.SA", "BRL=X"]
+# PRIO3 só entra na carteira long-short PETR4 − PRIO3 (dbt/seeds/carteiras.csv).
+ATIVOS_BRASIL = ["^BVSP", "PETR4.SA", "VALE3.SA", "ITUB4.SA", "BBAS3.SA", "PRIO3.SA", "BRL=X"]
 MOEDAS_CONTROLE = ["MXN=X", "CLP=X", "COP=X", "ZAR=X"]
 # Mercado global para o modelo de mercado do Ibovespa: ETF iShares MSCI Emerging Markets
 # (NYSE, em USD). Só diário: as barras de 1h dos EUA começam na meia hora (13:30 UTC) e

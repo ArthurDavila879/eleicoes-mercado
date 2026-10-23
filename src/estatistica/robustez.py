@@ -207,6 +207,8 @@ def ler_parametros(bruto) -> dict:
         janelas_sensibilidade=ler_janelas_sensibilidade(v["janelas_sensibilidade"]),
         placebo_n=int(v["placebo_n"]),
         placebo_semente=int(v["placebo_semente"]),
+        fuso_offset_horas=int(v.get("fuso_offset_horas", -3)),
+        hora_corte_pregao=int(v.get("hora_corte_pregao", 17)),
     )
 
 

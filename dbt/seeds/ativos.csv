@@ -4,6 +4,9 @@ PETR4.SA,Petrobras PN,acao,mercado
 VALE3.SA,Vale ON,acao,mercado
 ITUB4.SA,Itaú Unibanco PN,acao,mercado
 BBAS3.SA,Banco do Brasil ON,acao,mercado
+PRIO3.SA,PRIO ON,acao,nenhum
+LS_BBAS3_ITUB4,Long-short Banco do Brasil − Itaú (BBAS3 − ITUB4),carteira,mercado
+LS_PETR4_PRIO3,Long-short Petrobras − PRIO (PETR4 − PRIO3),carteira,mercado
 BRL=X,Real (USD/BRL Yahoo),moeda_brasil,controle_moedas
 BCB_DOLAR,Real (USD/BRL BCB/SGS venda),moeda_brasil,controle_moedas
 MXN=X,Peso mexicano (USD/MXN),moeda_controle,nenhum

@@ -57,7 +57,7 @@ DuckDB é reconstruído a partir deles a cada execução.
 | Fonte | O quê | Frequência | Observações |
 |---|---|---|---|
 | [BCB / SGS](https://dadosabertos.bcb.gov.br/) | Dólar venda (série 1), euro venda (21619), meta Selic (432) | diária | códigos confirmados no catálogo de dados abertos do BCB |
-| [Yahoo Finance](https://finance.yahoo.com/) via `yfinance` | `^BVSP`, `PETR4.SA`, `VALE3.SA`, `ITUB4.SA`, `BBAS3.SA`, `BRL=X`, controles `MXN=X`, `CLP=X`, `COP=X`, `ZAR=X` e mercado global `EEM` (só diário) | diária e 1h | horários em UTC; ações diárias ajustadas por proventos |
+| [Yahoo Finance](https://finance.yahoo.com/) via `yfinance` | `^BVSP`, `PETR4.SA`, `VALE3.SA`, `ITUB4.SA`, `BBAS3.SA`, `PRIO3.SA` (só na carteira long-short), `BRL=X`, controles `MXN=X`, `CLP=X`, `COP=X`, `ZAR=X` e mercado global `EEM` (só diário) | diária e 1h | horários em UTC; ações diárias ajustadas por proventos |
 | [GDELT DOC 2.0](https://blog.gdeltproject.org/gdelt-doc-2-0-api-debuts/) | nº de artigos e tom médio por dia | diária | mesma consulta-base para cada candidato do 2º turno |
 | `data/eventos.csv` | eventos com data/hora, tipo, descrição e fonte | — | só eventos com data certa e verificável |
 
@@ -88,6 +88,9 @@ corrigir barras parciais) e completa sozinha o histórico que faltar antes do 1�
   não se alinham às da B3.
 - **Real** (`BRL=X` e o dólar do BCB): `AR = R_BRL − média(R_MXN, R_CLP, R_COP, R_ZAR)`, ou seja,
   quanto o real se moveu além do que outras moedas emergentes se moveram no mesmo dia/hora.
+- **Carteiras long-short de mesmo setor** (estatal − privada): `r = r_BBAS3 − r_ITUB4` e
+  `r = r_PETR4 − r_PRIO3`, calculadas como o log-retorno da razão de preços nos pregões/barras com
+  as duas cotações, e tratadas como mais um ativo, com modelo de mercado contra o Ibovespa.
 - Observações da janela de estimação que caem na janela de **outro** evento são descartadas.
 
 **CAR e significância:** `CAR = Σ AR` na janela; `t = CAR / (σ̂·√L)`, com σ̂ estimado na janela
@@ -110,6 +113,27 @@ que a reimplementação reproduz exatamente o CAR, o t e o p-valor dos modelos S
 | **Holm** | ajuste para as 6 comparações da família principal (janela diária de Ibovespa, PETR4, VALE3, ITUB4, BBAS3 e `BRL=X`) | `fct_testes_robustez` |
 | **Placebo** | a mesma metodologia em até 1000 datas sem evento por ativo (sem reposição, semente 20261025), fora das janelas reais; p-valor empírico `(1 + #{\|CAR_placebo\| ≥ \|CAR_real\|}) / (1 + n)`. Versão principal: pseudodia 0 no 1º pregão após um dia sem pregão (ou na 1ª barra do pregão), como num evento de domingo; versão "qualquer dia" como sensibilidade | `fct_placebo_distribuicao`, `fct_placebo_resultados` |
 | **Sensibilidade de janela** | CAR e p-valor (t principal) em [0,0], [0,+1], [-1,+3] (principal) e [-5,+5] pregões | `fct_sensibilidade_janelas` |
+
+### Volatilidade e volume anormais
+
+Na janela diária, com o mesmo dia 0 e a mesma estimação [-120,-11] (`fct_atividade_anormal`):
+
+- **volatilidade realizada:** `ln Σ r_h²` das barras de 1h de cada dia (horário de Brasília); a barra
+  de abertura inclui o intervalo desde o fechamento anterior; dias com menos da metade das barras
+  típicas são descartados;
+- **volume:** `ln(1 + volume diário)` (Ibovespa e ações; as moedas não têm volume no Yahoo).
+
+O nível anormal é `x − média(x)` na estimação; o teste usa o acumulado na janela,
+`t = Σ(x − média) / (dp·√L)`, que é o mesmo estudo de evento com média constante.
+
+### Juros (Tesouro Direto) — não incluído
+
+O plano previa medir a variação anormal das taxas de um prefixado e de um IPCA+ com os dados
+abertos do Tesouro Transparente. Em 23/10/2026 o download do CSV respondeu HTTP 429 ("Muitas
+requisições") em todas as tentativas, inclusive a primeira do dia, embora a API do catálogo
+respondesse; o JSON antigo do site do Tesouro Direto responde HTTP 410. O arquivo também é
+atualizado com cerca de uma semana de atraso. Sem fonte confiável, a análise foi omitida, como
+o pré-registro previa (ver `DECISOES.md`).
 
 ## Resultados
 
@@ -166,6 +190,36 @@ de 26/10 em diante. Os números atualizados estão no dashboard (`marts.resultad
 **Pré-registro do 2º turno:** antes da votação, o plano de análise do 2º turno (janelas,
 modelos, testes, nível de significância e testes adicionais) foi fixado em
 [`PRE_REGISTRO.md`](PRE_REGISTRO.md) e congelado na tag `pre-registro-2turno`.
+
+**Carteiras long-short no 1º turno** (estatal − privada do mesmo setor; CAR > 0 = a estatal foi
+melhor que a privada, além do previsto pelo mercado)
+
+| Carteira | Freq. | CAR | t | p (t) | Patell | BMP | Corrado | Placebo |
+|---|---|---:|---:|---:|---:|---:|---:|---:|
+| Banco do Brasil − Itaú | diária | −7,39% | −2,43 | 0,017 | 0,018 | 0,439 | 0,666 | 0,015 |
+| Petrobras − PRIO | diária | +4,15% | 1,15 | 0,252 | 0,349 | 0,401 | 0,518 | 0,338 |
+| Banco do Brasil − Itaú | horária | −0,56% | −0,37 | 0,712 | 0,620 | 0,435 | 0,511 | 0,660 |
+| Petrobras − PRIO | horária | +5,84% | 3,07 | 0,002 | 0,021 | 0,334 | 0,514 | 0,011 |
+
+Na sensibilidade, Banco do Brasil − Itaú é −0,5% (n.s.) em [0,0] e −8,7% (***) em [0,+1]: a
+diferença aparece a partir do 2º pregão. Petrobras − PRIO é +4,2% (***) em [0,0], mas não
+significativo em [-1,+3] e [-5,+5]: a diferença do dia 0 não persiste na janela.
+
+**Volatilidade e volume no 1º turno** (média na janela [-1,+3] contra o normal; dia 0 = 05/10)
+
+| Ativo | Volatilidade: média na janela | dia 0 | p | Volume: média na janela | dia 0 | p |
+|---|---:|---:|---:|---:|---:|---:|
+| Ibovespa | +220% | +8.825% | 0,005 | +118% | +262% | <0,0001 |
+| Petrobras PN | +128% | +2.239% | 0,079 | +59% | +204% | 0,009 |
+| Vale ON | +102% | +154% | 0,104 | +131% | +308% | <0,0001 |
+| Itaú Unibanco PN | +280% | +7.515% | 0,001 | +124% | +328% | <0,0001 |
+| Banco do Brasil ON | +558% | +8.211% | <0,0001 | +222% | +558% | <0,0001 |
+| Real — USD/BRL (Yahoo) | +187% | +4.992% | 0,003 | — | — | — |
+
+No dia 0, a variância realizada de quase todos os ativos foi dezenas de vezes a normal, por
+causa do salto de abertura depois do fim de semana do 1º turno; o volume do Ibovespa e das ações
+ficou de três a quase sete vezes o normal. Volatilidade e volume são persistentes, o que torna o
+t otimista; o tamanho do efeito é o número mais informativo.
 
 **Robustez do 1º turno — janela diária [-1,+3]** (p-valores bicaudais)
 
@@ -231,6 +285,7 @@ Placebo com 200 datas elegíveis por ação (186 no `BRL=X`) na versão principa
   dos parâmetros e supõe ARs independentes e homocedásticos; os testes de robustez (Patell, BMP,
   Corrado, placebo) relaxam essas hipóteses, mas BMP e Corrado têm pouco poder com um ativo e
   janelas curtas.
+- **Juros fora do estudo.** A fonte do Tesouro Direto não estava acessível de forma confiável.
 - **Placebo limitado pelo histórico.** Há ~200 datas elegíveis na versão principal (diária), o
   que limita a resolução do p-valor empírico (mínimo ≈ 0,005).
 

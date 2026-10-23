@@ -34,6 +34,8 @@ COR_BAIXA = "#d03b3b"
 COR_ATIVO = {
     "^BVSP": PALETA[0], "PETR4.SA": PALETA[1], "VALE3.SA": PALETA[2], "ITUB4.SA": PALETA[3],
     "BBAS3.SA": PALETA[4], "BRL=X": PALETA[5], "BCB_DOLAR": PALETA[6], "EEM": PALETA[7],
+    # Carteiras long-short (Fase 2): tons fora da paleta base, para não repetir as ações das pontas
+    "LS_BBAS3_ITUB4": "#1fb5ad", "LS_PETR4_PRIO3": "#b5a01f",
 }
 # Candidatos: cores sem associação partidária (laranja e água), atribuídas em ordem alfabética
 COR_CANDIDATO = {c: cor for c, cor in zip(sorted(config.CANDIDATOS_2_TURNO), [PALETA[1], PALETA[2]])}
@@ -64,6 +66,7 @@ TELAS = {
     "tempo": ":material/show_chart: Ativos no tempo",
     "real": ":material/currency_exchange: Real × emergentes",
     "noticias": ":material/newspaper: Notícias (GDELT)",
+    "atividade": ":material/equalizer: Volatilidade e volume",
     "robustez": ":material/verified: Robustez",
     "metodo": ":material/menu_book: Metodologia",
 }
@@ -652,6 +655,72 @@ def tela_noticias() -> None:
 
 
 # =====================================================================
+# Volatilidade e volume
+# =====================================================================
+NOMES_MEDIDA = {"volatilidade_realizada": "Volatilidade realizada (barras de 1h)", "volume": "Volume negociado"}
+
+
+def tela_atividade() -> None:
+    cabecalho(
+        "Volatilidade e volume", "O mercado ficou mais agitado do que o normal em torno do evento?",
+        "Além da direção do preço, o evento pode mudar a <b>intensidade</b> dos negócios. A <b>volatilidade "
+        "realizada</b> de cada dia soma os quadrados dos retornos das barras de 1h (a barra de abertura inclui o "
+        "intervalo desde o fechamento anterior); o <b>volume</b> é o volume diário negociado. Os dois são "
+        "comparados, em log, com a média dos meses anteriores (janela de estimação [-120,-11] pregões): "
+        "<b>+100%</b> = o dobro do normal. O teste usa o acumulado na janela [-1,+3]. As moedas não têm volume "
+        "no Yahoo. As carteiras long-short aparecem só na volatilidade.",
+    )
+    resumo_evento()
+    if evento_id is None:
+        return
+    dados = consultar(f"select * from marts.fct_atividade_anormal where evento_id = {int(evento_id)}")
+    prontos = dados[dados["p_valor"].notna()]
+    if prontos.empty:
+        st.info("**Aguardando dados** para este evento: os números aparecem quando a janela for coletada.")
+        return
+    colunas = st.columns(2)
+    for coluna, (medida, parte) in zip(colunas, prontos.groupby("medida", sort=False)):
+        parte = parte.sort_values("variacao_media_pct")
+        nomes = [nome_ativo.get(a, a) for a in parte["ativo"]]
+        fig = go.Figure(go.Bar(
+            x=parte["variacao_media_pct"], y=nomes, orientation="h", width=0.55,
+            marker=dict(color=[COR_ATIVO.get(a, CINZA) for a in parte["ativo"]], cornerradius=4),
+            customdata=np.stack([parte["anormal_dia0_pct"], parte["p_valor"]], axis=1),
+            hovertemplate="Média na janela: %{x:.0f}% acima do normal<br>Dia 0: %{customdata[0]:.0f}%"
+                          "<br>p-valor %{customdata[1]:.4f}<extra>%{y}</extra>",
+        ))
+        for nome, v, p in zip(nomes, parte["variacao_media_pct"], parte["p_valor"]):
+            fig.add_annotation(x=max(v, 0), y=nome, text=f"{fmt_pct(v, 0)} {estrelas(p)}", showarrow=False,
+                               xanchor="left", xshift=6, font=dict(size=12))
+        fig.add_vline(x=0, line_color=CINZA, line_width=1)
+        fig.update_xaxes(range=[min(parte["variacao_media_pct"].min(), 0) * 1.1,
+                                max(parte["variacao_media_pct"].max(), 0) * 1.35 + 1])
+        estilo(fig, "", max(320, 80 + 48 * len(parte)), datas=False).update_layout(
+            hovermode="closest", showlegend=False, xaxis_title="Média na janela [-1,+3] vs. normal (%)",
+            margin=dict(l=10, r=40, t=10, b=10))
+        with coluna:
+            st.markdown(f"**{NOMES_MEDIDA.get(medida, medida)}**")
+            grafico(fig)
+    tabela = pd.DataFrame({
+        "Medida": dados["medida"].map(NOMES_MEDIDA),
+        "Ativo": dados["ativo"].map(lambda a: nome_ativo.get(a, a)),
+        "Média na janela (%)": dados["variacao_media_pct"],
+        "Dia 0 (%)": dados["anormal_dia0_pct"],
+        "t": dados["estatistica_t"],
+        "p-valor": dados["p_valor"].map(com_estrelas),
+        "Obs./esperadas": dados["n_obs"].fillna(0).astype(int).astype(str) + "/"
+                          + dados["n_esperado"].fillna(5).astype(int).astype(str),
+        "Status": dados["status"].map(NOMES_STATUS),
+    })
+    st.dataframe(tabela, width="stretch", hide_index=True,
+                 column_config={c: st.column_config.NumberColumn(format="%.1f")
+                                for c in ["Média na janela (%)", "Dia 0 (%)", "t"]})
+    st.caption("Média na janela = exp(média do log anormal) − 1. Dia 0 = primeiro pregão depois do evento. "
+               "Volatilidade e volume têm persistência (dias agitados vêm em sequência), o que torna o t "
+               "otimista; leia junto com o tamanho do efeito.")
+
+
+# =====================================================================
 # Robustez
 # =====================================================================
 def tela_robustez() -> None:
@@ -770,6 +839,10 @@ def tela_metodo() -> None:
   `t = CAR / (σ·√L)`, com σ estimado na janela de estimação e p-valor da t de Student.
   O intervalo de 95% dos gráficos é `CAR ± 1,96·σ·√L`, convertido para variação %.
 - Observações de estimação que caem na janela de outro evento são descartadas.
+- **Carteiras long-short** (BBAS3 − ITUB4 e PETR4 − PRIO3): log-retorno da ponta comprada menos o da
+  vendida, com modelo de mercado contra o Ibovespa, como mais um ativo.
+- **Volatilidade e volume anormais:** log da volatilidade realizada (barras de 1h) e do volume
+  diário contra a média da estimação, acumulado na janela [-1,+3].
 - **Robustez:** testes de Patell, BMP (adaptação em série temporal) e Corrado, placebo com datas
   sem evento, sensibilidade de janela e ajuste de Holm, conforme o pré-registro (`PRE_REGISTRO.md`).
 - **Limitações:** poucos eventos, eventos e notícias sobrepostos, choques globais no mesmo dia,
@@ -779,5 +852,5 @@ def tela_metodo() -> None:
 
 {
     "painel": tela_painel, "evento": tela_evento, "tempo": tela_tempo,
-    "real": tela_real, "noticias": tela_noticias, "robustez": tela_robustez, "metodo": tela_metodo,
+    "real": tela_real, "noticias": tela_noticias, "atividade": tela_atividade, "robustez": tela_robustez, "metodo": tela_metodo,
 }[tela]()

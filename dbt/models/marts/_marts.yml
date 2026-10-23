@@ -70,7 +70,7 @@ models:
     config: &config_robustez
       # Os modelos Python só enxergam chaves de config lidas com nome literal: as vars do
       # projeto vão juntas num JSON (lido por robustez.ler_parametros)
-      parametros_robustez: '{{ tojson({"janela_diaria_inicio": var("janela_diaria_inicio"), "janela_diaria_fim": var("janela_diaria_fim"), "janela_horaria_inicio": var("janela_horaria_inicio"), "janela_horaria_fim": var("janela_horaria_fim"), "estimacao_diaria_inicio": var("estimacao_diaria_inicio"), "estimacao_diaria_fim": var("estimacao_diaria_fim"), "estimacao_horaria_inicio": var("estimacao_horaria_inicio"), "estimacao_horaria_fim": var("estimacao_horaria_fim"), "min_obs_estimacao_diaria": var("min_obs_estimacao_diaria"), "min_obs_estimacao_horaria": var("min_obs_estimacao_horaria"), "familia_principal": var("familia_principal"), "janelas_sensibilidade": var("janelas_sensibilidade"), "placebo_n": var("placebo_n"), "placebo_semente": var("placebo_semente")}) }}'
+      parametros_robustez: '{{ tojson({"janela_diaria_inicio": var("janela_diaria_inicio"), "janela_diaria_fim": var("janela_diaria_fim"), "janela_horaria_inicio": var("janela_horaria_inicio"), "janela_horaria_fim": var("janela_horaria_fim"), "estimacao_diaria_inicio": var("estimacao_diaria_inicio"), "estimacao_diaria_fim": var("estimacao_diaria_fim"), "estimacao_horaria_inicio": var("estimacao_horaria_inicio"), "estimacao_horaria_fim": var("estimacao_horaria_fim"), "min_obs_estimacao_diaria": var("min_obs_estimacao_diaria"), "min_obs_estimacao_horaria": var("min_obs_estimacao_horaria"), "familia_principal": var("familia_principal"), "janelas_sensibilidade": var("janelas_sensibilidade"), "placebo_n": var("placebo_n"), "placebo_semente": var("placebo_semente"), "fuso_offset_horas": var("fuso_offset_horas"), "hora_corte_pregao": var("hora_corte_pregao")}) }}'
     tests:
       - combinacao_unica:
           arguments:
@@ -105,3 +105,18 @@ models:
       - combinacao_unica:
           arguments:
             colunas: [frequencia, evento_id, ativo, versao]
+
+  # --- Análises adicionais (Fase 2; ver PRE_REGISTRO.md, seção 6) ---
+  - name: fct_atividade_anormal
+    description: Volatilidade realizada (barras de 1h) e volume anormais, em log, na janela diária
+    config: *config_robustez
+    tests:
+      - combinacao_unica:
+          arguments:
+            colunas: [medida, evento_id, ativo]
+    columns:
+      - name: medida
+        tests:
+          - accepted_values:
+              arguments:
+                values: [volatilidade_realizada, volume]

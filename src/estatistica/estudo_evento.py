@@ -143,6 +143,10 @@ def estudo(
         inicio_janela=serie.tempo[na_jan].min(), fim_janela=serie.tempo[na_jan].max(),
     )
 
+    if not sigma > 0:  # série constante na estimação: testes padronizados indefinidos
+        return {**res, **dict.fromkeys(["z_patell", "p_patell", "t_bmp", "p_bmp", "z_corrado",
+                                        "p_corrado"], np.nan)}
+
     # --- Patell: AR padronizado com correção do erro de previsão ---
     sar = ar / (sigma * np.sqrt(fator_previsao(modelo, ref_jan, p)))
     k = n_est - gl
