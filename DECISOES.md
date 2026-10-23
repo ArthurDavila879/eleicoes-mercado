@@ -341,3 +341,18 @@ Decisões tomadas de forma autônoma durante a construção do projeto, com a ju
 - **Sem "retorno anormal":** a reação não desconta um movimento global do dólar no fim de semana
   (não há referência confiável de câmbio de emergentes aos domingos). O placebo mede o quanto a
   variação é incomum, não o quanto é específica do Brasil.
+
+## Dashboard: evento personalizado e linha do tempo (rodada 3, bloco E, 23/10/2026)
+- **Evento personalizado = mesmo código do estudo** (`src/estatistica/personalizado.py` sobre
+  `estudo_evento.estudo`): mesmas regras de dia/barra 0, estimação e exclusão das janelas dos
+  eventos oficiais (menos a janela que coincide com a data escolhida). Conferido: em 04/10/2026
+  17h reproduz exatamente os CAR e p-valores de `resultados_eventos` (diário e horário). Janela
+  editável; estimação e mínimos lidos das `vars` de `dbt/dbt_project.yml`. A tela avisa sobre
+  testes múltiplos (escolher datas até achar uma "significativa").
+- **Linha do tempo:** preços diários em base 100 no início do período escolhido, eventos como
+  linhas verticais e o volume relativo do GDELT (× dia típico de cada candidato) em barras
+  translúcidas num segundo eixo. Volume relativo, e não absoluto, pelo motivo já registrado (os
+  níveis entre nomes não são comparáveis).
+- **Novas seções:** multifatorial na tela de reação (diária), dólar implícito na tela do real e
+  tela "Eleições 2014–2026" (matriz de CAR e análise agregada, com a opção de mostrar só os
+  ativos do estudo principal).

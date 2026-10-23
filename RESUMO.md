@@ -102,3 +102,17 @@ Pendências: a PRIO3 de out/2026 chega com a próxima coleta da CI (até lá a c
 fica `aguardando_dados` no repositório e a verificação de atualização acusa a PRIO3); ativar o
 GitHub Pages (Source: GitHub Actions) e criar o app no Streamlit Cloud; decidir entre branch
 `data` e Git LFS para os commits de dados; screenshot do dashboard em `docs/dashboard.png`.
+
+## Rodada 3 (23/10/2026, noite): ampliação
+
+| Bloco | Entrega | Commit |
+|---|---|---|
+| A | Coleta: 8 ações novas (ELET3 → `AXIA3`), Brent, minério, DXY, VIX, ^TNX, BTC-USD; Binance BTCBRL/BTCUSDT (o Yahoo não tem BTC-BRL); preços desde 2014; filtro de pico isolado | `6f81de7` |
+| B | Eleições de 2014, 2018 e 2022 (diário, com fonte) e análise agregada (CAAR, t agregado/transversal, qui² sem direção) | `0d07929` |
+| C | Modelo multifatorial (Ibovespa + Brent / minério) lado a lado com o simples; spread PETR3 − PETR4 | `8171052` |
+| D | Dólar implícito no bitcoin, domingo 17h → segunda 10h, com placebo em ~300 fins de semana | `fd5ef39` |
+| E | Dashboard: Evento personalizado, Linha do tempo (preços + eventos + GDELT), Eleições 2014–2026 | (este commit) |
+
+Pendências: os Parquet de out/2026 dos tickers novos chegam com a próxima coleta da CI (até lá
+eles e a PETR3 aparecem como atrasados na verificação de atualização); a Binance pode bloquear
+os IPs dos runners do GitHub (nesse caso a coleta das outras fontes segue e só há aviso).

@@ -504,6 +504,21 @@ Edite `data/eventos.csv` (`data_hora` em ISO 8601 **com fuso**, ex. `2026-10-25T
 `tipo` ∈ debate, pesquisa, resultado, declaracao, outro; `descricao`; `fonte_url`). Inclua só
 eventos com data e hora verificáveis e a URL da fonte. Valide com `python -m src.eventos.validacao`.
 
+### Dashboard
+
+Telas principais:
+
+- **Painel:** cards dos ativos.
+- **Reação ao evento:** CAR com intervalo de 95%, CAR passo a passo e o modelo multifatorial.
+- **Ativos no tempo** e **Linha do tempo:** preços em base 100, eventos e o volume relativo de
+  notícias do GDELT no mesmo gráfico.
+- **Eleições 2014–2026:** CAR de cada eleição e a análise agregada.
+- **Evento personalizado:** você escolhe data/hora, ativo, frequência e janela, e o app calcula
+  na hora o CAR, o t, Patell, Corrado e BMP com o mesmo método do estudo. É exploratório: testar
+  muitas datas gera falsos positivos.
+- **Real × emergentes:** inclui o dólar implícito no bitcoin.
+- **Volatilidade e volume**, **Robustez** e **Metodologia**.
+
 ### Deploy do dashboard (Streamlit Community Cloud)
 
 O app não precisa de etapa de build: na inicialização, se o DuckDB não existe ou está
@@ -566,7 +581,8 @@ workflows, então a coleta automática não aciona o workflow de testes a cada h
 ## Estrutura
 
 ```
-├── app.py                     # dashboard Streamlit (telas: Painel, Reação ao evento, Ativos, Real, GDELT, Robustez, Metodologia)
+├── app.py                     # dashboard Streamlit (Painel, Reação ao evento, Ativos no tempo, Linha do tempo,
+│                              #   Eleições 2014–2026, Evento personalizado, Real, GDELT, Volatilidade, Robustez, Metodologia)
 ├── .streamlit/config.toml     # tema escuro do dashboard
 ├── data/
 │   ├── bruto/<fonte>/AAAA-MM.parquet

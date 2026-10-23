@@ -20,7 +20,10 @@ import plotly.graph_objects as go
 import streamlit as st
 from plotly.subplots import make_subplots
 
+import yaml
+
 from src import banco, config
+from src.estatistica import personalizado
 
 st.set_page_config(page_title="Eleições 2026 × Mercado", page_icon="📈", layout="wide")
 
@@ -65,10 +68,22 @@ FORMATO_PRECO = {"indice": "%{customdata:,.0f} pts", "acao": "R$ %{customdata:,.
 FORMATO_PRECO_PADRAO = "%{customdata:,.4f}"
 Z_95 = 1.959964
 
+
+def _vars_dbt() -> dict:
+    """Janelas e parâmetros do estudo (vars de dbt/dbt_project.yml), para o evento personalizado."""
+    with open(config.DIR_DBT / "dbt_project.yml", encoding="utf-8") as f:
+        return yaml.safe_load(f)["vars"]
+
+
+VARS = _vars_dbt()
+
 TELAS = {
     "painel": ":material/dashboard: Painel",
     "evento": ":material/bolt: Reação ao evento",
     "tempo": ":material/show_chart: Ativos no tempo",
+    "linha": ":material/timeline: Linha do tempo",
+    "historico": ":material/history: Eleições 2014–2026",
+    "personalizado": ":material/tune: Evento personalizado",
     "real": ":material/currency_exchange: Real × emergentes",
     "noticias": ":material/newspaper: Notícias (GDELT)",
     "atividade": ":material/equalizer: Volatilidade e volume",
@@ -507,6 +522,28 @@ def tela_evento() -> None:
                "bicaudal): *** p<0,01 · ** p<0,05 · * p<0,10 · n.s. não significativo. Para o real, CAR negativo = "
                "real mais forte que os pares.")
 
+    if frequencia == "diaria" and evento_id is not None:
+        multi = consultar(f"select * from marts.fct_modelo_multifatorial where evento_id = {int(evento_id)} "
+                          f"and p_valor is not null")
+        if not multi.empty:
+            st.markdown("**Modelo multifatorial (exploratório): mercado + commodity**")
+            st.dataframe(pd.DataFrame({
+                "Ativo": multi["ativo"].map(lambda a: nome_ativo.get(a, a)),
+                "Fator": multi["fator"].map(lambda a: nome_ativo.get(a, a)),
+                "CAR simples (%)": multi["car_pct_simples"],
+                "p simples": multi["p_valor_simples"].map(com_estrelas),
+                "CAR multifatorial (%)": multi["car_pct"],
+                "p multifatorial": multi["p_valor"].map(com_estrelas),
+                "β do fator": multi["beta_fator"],
+                "R² simples → multi": [f"{fmt_num(a, 2)} → {fmt_num(b, 2)}"
+                                       for a, b in zip(multi["r2_simples"], multi["r2_multifatorial"])],
+            }), width="stretch", hide_index=True,
+                column_config={c: st.column_config.NumberColumn(format="%.2f")
+                               for c in ["CAR simples (%)", "CAR multifatorial (%)", "β do fator"]})
+            st.caption("Retorno normal = α + β·Ibovespa + β·fator (Brent para Petrobras; minério de ferro para Vale), "
+                       "com o fator medido entre os mesmos pregões da ação. O modelo de mercado simples continua "
+                       "sendo o principal; a série do minério é fraca (ver DECISOES.md).")
+
 
 # =====================================================================
 # Ativos no tempo
@@ -617,6 +654,41 @@ def tela_real() -> None:
             fig.update_yaxes(title_text="Índice (base 100)", row=1, col=1)
             grafico(fig)
 
+    st.subheader("Dólar implícito no bitcoin (fim de semana)")
+    st.caption("USD/BRL implícito = BTCBRL ÷ BTCUSDT (Binance), 24 h por dia: mostra o real enquanto o câmbio e a "
+               "B3 estão fechados. Par pouco líquido — sinal de direção, não cotação.")
+    implicito = consultar(f"select * from marts.fct_dolar_implicito_eventos where evento_id = {int(evento_id)}") \
+        if evento_id is not None else pd.DataFrame()
+    if implicito.empty:
+        st.info("Sem dólar implícito para este evento (o BTCBRL existe desde out/2020, ou o evento ainda não ocorreu).")
+    else:
+        linha = implicito.iloc[0]
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Sexta 17h → domingo (pré)", fmt_pct(pct_de_log(linha["pre_evento"]), 2))
+        c2.metric("Evento → segunda 10h", fmt_pct(pct_de_log(linha["reacao"]), 2),
+                  help=f"z = {fmt_num(linha['z_reacao'], 1)} contra {int(linha['n_placebo'])} fins de semana")
+        c3.metric("p empírico (placebo)", com_estrelas(linha["p_empirico"]))
+        c4.metric("Fim de semana: oficial (BRL=X)",
+                  "—" if pd.isna(linha["oficial_fim_de_semana"]) else fmt_pct(pct_de_log(linha["oficial_fim_de_semana"]), 2))
+        ini = linha["sexta_utc"] - timedelta(hours=24)
+        fim = linha["abertura_utc"] + timedelta(hours=12)
+        caminho = consultar(
+            f"select data_hora_utc + interval 1 hour + interval (-3) hour as tempo, dolar_implicito "
+            f"from staging.stg_dolar_implicito_horario where data_hora_utc between '{ini}' and '{fim}' order by 1")
+        oficial = consultar(
+            f"select data_hora_utc + interval 1 hour + interval (-3) hour as tempo, preco from staging.stg_precos_horarios "
+            f"where ativo = 'BRL=X' and data_hora_utc between '{ini}' and '{fim}' order by 1")
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(x=caminho["tempo"], y=caminho["dolar_implicito"], mode="lines",
+                                 name="Implícito (bitcoin)", line=dict(width=2, color=PALETA[1]),
+                                 hovertemplate="R$ %{y:.4f}"))
+        if not oficial.empty:
+            fig.add_trace(go.Scatter(x=oficial["tempo"], y=oficial["preco"], mode="lines", name="Oficial (BRL=X)",
+                                     line=dict(width=2, color=COR_ATIVO["BRL=X"]), hovertemplate="R$ %{y:.4f}"))
+        fig.add_vline(x=evento["data_hora_local"], line_dash="dot", line_color=CINZA)
+        grafico(estilo(fig, "USD/BRL", 380))
+        st.caption("Horário de Brasília, no fim de cada barra de 1h. Linha pontilhada: evento.")
+
     st.subheader("Séries do Banco Central (SGS)")
     bcb = consultar("select serie_nome, cast(data as timestamp) as data, valor from staging.stg_bcb_series order by data")
     if bcb.empty:
@@ -645,6 +717,173 @@ def tela_real() -> None:
                 unsafe_allow_html=True,
             )
             grafico(estilo(fig, "", 220).update_layout(showlegend=False, margin=dict(l=0, r=0, t=10, b=0)))
+
+
+# =====================================================================
+# Linha do tempo: preços, eventos e GDELT
+# =====================================================================
+def tela_linha() -> None:
+    cabecalho(
+        "Linha do tempo", "Preços, eventos e cobertura de notícias no mesmo eixo de tempo.",
+        "As linhas são preços em <b>base 100</b> no início do período escolhido; as barras claras, no eixo da "
+        "direita, são o <b>volume relativo de notícias</b> do GDELT por candidato (1 = dia típico do próprio "
+        "candidato). As linhas verticais marcam os eventos. Serve para ver o contexto em volta de cada evento — "
+        "picos de notícia, tendências anteriores —, não para tirar conclusões causais.",
+    )
+    opcoes = [a for a in ativos["ativo"] if a in COR_ATIVO]
+    c1, c2 = st.columns([3, 2])
+    selecionados = c1.multiselect("Ativos", opcoes, default=["^BVSP", "BRL=X"], key="ativos_linha",
+                                  format_func=lambda a: f"{nome_ativo.get(a, a)} ({a})")
+    hoje = pd.Timestamp.now().normalize()
+    periodo = c2.date_input("Período", value=(hoje - pd.Timedelta(days=180), hoje), key="periodo_linha")
+    if not selecionados or not isinstance(periodo, tuple) or len(periodo) != 2:
+        st.info("Escolha ao menos um ativo e as duas datas do período.")
+        return
+    ini, fim = (pd.Timestamp(d) for d in periodo)
+    lista = ", ".join(f"'{a}'" for a in selecionados)
+    precos = consultar(f"select ativo, cast(data as timestamp) as tempo, preco from staging.stg_precos_diarios "
+                       f"where ativo in ({lista}) and data between '{ini:%Y-%m-%d}' and '{fim:%Y-%m-%d}' order by data")
+    gdelt = consultar(f"select candidato, cast(data as timestamp) as data, volume_relativo from staging.stg_gdelt "
+                      f"where data between '{ini:%Y-%m-%d}' and '{fim:%Y-%m-%d}' order by data")
+    fig = make_subplots(specs=[[{"secondary_y": True}]])
+    for candidato, parte in gdelt.groupby("candidato"):
+        fig.add_trace(go.Bar(x=parte["data"], y=parte["volume_relativo"], name=f"Notícias: {candidato}",
+                             marker=dict(color=COR_CANDIDATO.get(candidato, CINZA)), opacity=0.35,
+                             hovertemplate="%{y:.2f}× o normal"), secondary_y=True)
+    for ativo in selecionados:
+        parte = precos[precos["ativo"] == ativo]
+        if parte.empty:
+            continue
+        fig.add_trace(go.Scatter(x=parte["tempo"], y=100 * parte["preco"] / parte["preco"].iloc[0], mode="lines",
+                                 name=nome_ativo.get(ativo, ativo), line=dict(width=2, color=COR_ATIVO.get(ativo, CINZA)),
+                                 hovertemplate="%{y:.1f}"), secondary_y=False)
+    marcar_eventos(fig, eventos[(eventos["data_hora_local"] >= ini) & (eventos["data_hora_local"] <= fim + timedelta(days=1))],
+                   evento_id)
+    estilo(fig, "Preço (base 100)", 520).update_layout(barmode="overlay", bargap=0)
+    fig.update_yaxes(title_text="Notícias (× dia típico)", secondary_y=True, showgrid=False, rangemode="tozero")
+    grafico(fig)
+    if gdelt.empty:
+        st.caption("Sem dados do GDELT no período (a coleta de notícias começou em 2026).")
+
+
+# =====================================================================
+# Eleições 2014–2026: todos os eventos e análise agregada
+# =====================================================================
+def tela_historico() -> None:
+    cabecalho(
+        "Eleições 2014–2026", "O mesmo estudo de evento em todas as eleições presidenciais desde 2014.",
+        "Cada célula é o <b>CAR diário [-1,+3]</b> de um ativo numa eleição, com a mesma metodologia (só a "
+        "frequência diária: não há barras de 1h antes de 2025). Abaixo, a <b>análise agregada</b>: o CAAR é a "
+        "média dos CAR; o <b>t agregado</b> e o <b>t transversal</b> testam se a média é diferente de zero; o "
+        "<b>qui-quadrado sem direção</b> testa se houve reação anormal em qualquer sentido — eleições diferentes "
+        "podem mover o preço para lados opostos, e a média se cancelaria.",
+    )
+    res = resultados[(resultados["frequencia"] == "diaria") & resultados["p_valor"].notna()].copy()
+    if res.empty:
+        st.info("Sem eventos com dados.")
+        return
+    res["evento"] = [f"{pd.Timestamp(d):%Y} · {str(desc).split(':')[0]}" for d, desc in
+                     zip(res["data_hora_local"], res["descricao"])]
+    ordem = res.sort_values("data_hora_local")["evento"].drop_duplicates().tolist()
+    res["celula"] = [f"{fmt_pct(v, 1)} {s_}" for v, s_ in zip(res["car_pct"], res["significancia"].fillna(""))]
+    principais = ["^BVSP", "PETR4.SA", "VALE3.SA", "ITUB4.SA", "BBAS3.SA", "BRL=X", "BCB_DOLAR"]
+    so_principais = st.toggle("Só os ativos do estudo principal", value=True, key="historico_principais")
+    if so_principais:
+        res = res[res["ativo"].isin(principais)]
+    larga = res.pivot(index="ativo", columns="evento", values="celula").reindex(columns=ordem)
+    larga.index = [nome_ativo.get(a, a) for a in larga.index]
+    st.dataframe(larga.fillna("—"), width="stretch")
+    st.caption("*** p<0,01 · ** p<0,05 · * p<0,10 · n.s. não significativo (t principal). Para o real, negativo = "
+               "real mais forte que os pares emergentes.")
+
+    st.markdown("**Análise agregada entre eventos**")
+    grupo = st.radio("Eventos", ["todos", "1º turno", "2º turno"], horizontal=True, key="grupo_caar",
+                     format_func={"todos": "Todos", "1º turno": "Só 1º turnos", "2º turno": "Só 2º turnos"}.get)
+    caar = consultar(f"select * from marts.fct_caar_eventos where grupo = '{grupo}'")
+    if so_principais:
+        caar = caar[caar["ativo"].isin(principais)]
+    st.dataframe(pd.DataFrame({
+        "Ativo": caar["ativo"].map(lambda a: nome_ativo.get(a, a)),
+        "Eventos": caar["n_eventos"],
+        "CAAR (%)": caar["caar_pct"],
+        "CAR > 0": caar["n_positivos"].astype(str) + "/" + caar["n_eventos"].astype(str),
+        "t agregado (p)": caar["p_agregado"].map(com_estrelas),
+        "t transversal (p)": caar["p_transversal"].map(com_estrelas),
+        "Qui² sem direção (p)": caar["p_qui2"].map(com_estrelas),
+    }).sort_values("CAAR (%)"), width="stretch", hide_index=True,
+        column_config={"CAAR (%)": st.column_config.NumberColumn(format="%.2f")})
+    st.caption("t agregado: Σ CAR / √Σ erro-padrão², com as variâncias estimadas antes de cada evento. t transversal: "
+               "média / (desvio-padrão entre eventos / √N), só com 3 ou mais eventos. Qui²: Σ t², com N graus de "
+               "liberdade. Com poucos eventos, cada eleição continua sendo um caso com contexto próprio.")
+
+
+# =====================================================================
+# Evento personalizado
+# =====================================================================
+def tela_personalizado() -> None:
+    cabecalho(
+        "Evento personalizado", "Escolha uma data, um ativo e uma janela: o estudo de evento roda na hora.",
+        "Usa <b>exatamente</b> o método do estudo: mesmo modelo de retorno normal do ativo, mesma janela de "
+        "estimação, e as janelas dos eventos oficiais ficam fora da estimação. O dia 0 é o 1º pregão a partir da "
+        "data (ou o seguinte, se a hora for a partir das 17h); na frequência horária, a 1ª barra a partir do "
+        "instante. <b>Cuidado:</b> testar muitas datas até achar uma \"significativa\" gera falsos positivos — "
+        "com 10% de nível, 1 em cada 10 datas sem nada de especial dá \"*\" por acaso.",
+    )
+    c1, c2, c3 = st.columns([2, 1, 2])
+    data = c1.date_input("Data (horário de Brasília)", value=pd.Timestamp("2026-10-04"), key="data_pers",
+                         min_value=pd.Timestamp("2014-01-01"), max_value=pd.Timestamp.now())
+    hora = c2.time_input("Hora", value=pd.Timestamp("2026-10-04 17:00").time(), key="hora_pers")
+    frequencia = c3.radio("Frequência", ["diaria", "horaria"], horizontal=True, key="freq_pers",
+                          format_func={"diaria": "Diária", "horaria": "Horária"}.get)
+    analisados = sorted(resultados.loc[resultados["frequencia"] == frequencia, "ativo"].unique(),
+                        key=lambda a: nome_ativo.get(a, a))
+    c4, c5, c6 = st.columns([2, 1, 1])
+    ativo = c4.selectbox("Ativo", analisados, key="ativo_pers", format_func=lambda a: nome_ativo.get(a, a),
+                         index=analisados.index("^BVSP") if "^BVSP" in analisados else 0)
+    prefixo = "diaria" if frequencia == "diaria" else "horaria"
+    unidade = "pregões" if frequencia == "diaria" else "barras de 1h"
+    jan_ini = c5.number_input(f"Janela: início ({unidade})", -20, 0, int(VARS[f"janela_{prefixo}_inicio"]),
+                              key=f"jan_ini_{prefixo}")
+    jan_fim = c6.number_input(f"Janela: fim ({unidade})", 0, 20, int(VARS[f"janela_{prefixo}_fim"]),
+                              key=f"jan_fim_{prefixo}")
+    tabela = "int_retornos_diarios_ref" if frequencia == "diaria" else "int_retornos_horarios_ref"
+    tabela_janelas = "int_janelas_diarias" if frequencia == "diaria" else "int_janelas_horarias"
+    serie = consultar(f"select * from intermediario.{tabela} where ativo = '{ativo}'")
+    reais = consultar(f"select ativo, idx, fase, evento_id from intermediario.{tabela_janelas} "
+                      f"where ativo = '{ativo}' and fase = 'evento'")
+    instante = pd.Timestamp.combine(pd.Timestamp(data).date(), hora)
+    res, passos = personalizado.estudar(
+        serie, reais, ativo, instante, frequencia, (int(jan_ini), int(jan_fim)),
+        (int(VARS[f"estimacao_{prefixo}_inicio"]), int(VARS[f"estimacao_{prefixo}_fim"])),
+        int(VARS[f"min_obs_estimacao_{prefixo}"]), int(VARS["hora_corte_pregao"]), int(VARS["fuso_offset_horas"]))
+    if res is None:
+        st.info("Sem dados para esta combinação (data futura, antes do início da série do ativo, ou sem barras "
+                "de 1h nessa época — elas só existem nos últimos ~2 anos).")
+        return
+    m1, m2, m3, m4, m5 = st.columns(5)
+    m1.metric("CAR", fmt_pct(pct_de_log(res["car"]), 2), help=f"t = {fmt_num(res['estatistica_t'], 2)}")
+    m2.metric("p-valor (t)", com_estrelas(res["p_valor"]))
+    m3.metric("Patell", com_estrelas(res["p_patell"]))
+    m4.metric("Corrado", com_estrelas(res["p_corrado"]))
+    m5.metric("BMP", com_estrelas(res["p_bmp"]))
+    st.caption(f"Modelo: {NOMES_MODELO.get(serie['modelo_retorno_normal'].iloc[0], '—')} · estimação com "
+               f"{res['n_estimacao']} observações · {res['n_obs']} de {res['n_esperado']} {unidade} na janela · "
+               f"status: {NOMES_STATUS.get(res['status'], res['status'])}.")
+    fig = make_subplots(specs=[[{"secondary_y": False}]])
+    fig.add_trace(go.Bar(x=passos["rel"], y=passos["retorno_anormal"] * 100, name="Retorno anormal",
+                         marker=dict(color=[COR_ALTA if v >= 0 else COR_BAIXA for v in passos["retorno_anormal"]],
+                                     cornerradius=3), hovertemplate="%{y:.2f}%"))
+    fig.add_trace(go.Scatter(x=passos["rel"], y=passos["car_acumulado"] * 100, name="CAR acumulado",
+                             mode="lines+markers", line=dict(width=2, color=PALETA[0]), hovertemplate="%{y:.2f}%"))
+    fig.add_vline(x=-0.5, line_dash="dot", line_color=CINZA)
+    fig.add_hline(y=0, line_color=CINZA, line_width=1)
+    estilo(fig, "%", 380, datas=False).update_xaxes(title=f"Posição relativa ao evento ({unidade})", dtick=1)
+    grafico(fig)
+    st.dataframe(passos.assign(retorno_anormal=passos["retorno_anormal"] * 100,
+                               car_acumulado=passos["car_acumulado"] * 100).rename(columns={
+        "rel": "Posição", "tempo": "Data/hora (UTC nas barras)", "retorno_anormal": "AR (%)",
+        "car_acumulado": "CAR acumulado (%)"}), width="stretch", hide_index=True,
+        column_config={c: st.column_config.NumberColumn(format="%.3f") for c in ["AR (%)", "CAR acumulado (%)"]})
 
 
 # =====================================================================
@@ -869,6 +1108,10 @@ def tela_metodo() -> None:
   vendida, com modelo de mercado contra o Ibovespa, como mais um ativo.
 - **Volatilidade e volume anormais:** log da volatilidade realizada (barras de 1h) e do volume
   diário contra a média da estimação, acumulado na janela [-1,+3].
+- **Eleições de 2014, 2018 e 2022** (só diário) e **análise agregada**: CAAR, t agregado, t transversal e
+  qui-quadrado sem direção (reação anormal em qualquer sentido).
+- **Exploratório:** mais ações e o spread PETR3 − PETR4; modelo multifatorial (Ibovespa + Brent para Petrobras,
+  Ibovespa + minério para Vale); dólar implícito no bitcoin (BTCBRL ÷ BTCUSDT) entre domingo e segunda.
 - **Robustez:** testes de Patell, BMP (adaptação em série temporal) e Corrado, placebo com datas
   sem evento, sensibilidade de janela e ajuste de Holm, conforme o pré-registro (`PRE_REGISTRO.md`).
 - **Limitações:** poucos eventos, eventos e notícias sobrepostos, choques globais no mesmo dia,
@@ -877,6 +1120,7 @@ def tela_metodo() -> None:
 
 
 {
-    "painel": tela_painel, "evento": tela_evento, "tempo": tela_tempo,
+    "painel": tela_painel, "evento": tela_evento, "tempo": tela_tempo, "linha": tela_linha,
+    "historico": tela_historico, "personalizado": tela_personalizado,
     "real": tela_real, "noticias": tela_noticias, "atividade": tela_atividade, "robustez": tela_robustez, "metodo": tela_metodo,
 }[tela]()
