@@ -33,7 +33,8 @@ pytest -q                                   # testes (sem rede)
 python -m src.ingestao                      # coleta incremental (rede)
 python -m src.pipeline                      # coleta + carga + dbt build
 python -m src.pipeline --sem-coleta         # só carga + dbt build com os Parquet existentes
-dbt build --project-dir dbt --profiles-dir dbt
+python -m src.pipeline --sem-coleta --verificar-atualizacao  # + testes de atualização (tag atualizacao)
+dbt build --project-dir dbt --profiles-dir dbt --exclude tag:atualizacao
 streamlit run app.py
 docker compose --profile pipeline run --rm pipeline && docker compose up app
 ```

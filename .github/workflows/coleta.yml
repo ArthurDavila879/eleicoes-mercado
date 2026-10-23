@@ -72,3 +72,39 @@ jobs:
             sleep $((tentativa * 10))
           done
           exit 1
+
+      # Depois do commit (os dados novos já estão salvos): constrói o banco e confere se todas
+      # as séries têm dado recente (no máximo 2 dias úteis de atraso; GDELT só avisa).
+      # Uma falha aqui marca a execução como falha e abre/comenta a issue abaixo.
+      - name: Verificar atualização das fontes
+        run: python -m src.pipeline --sem-coleta --verificar-atualizacao
+
+  # Abre uma issue quando a coleta falha; se já houver uma aberta, só comenta nela
+  avisar_falha:
+    needs: coletar
+    if: failure()
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Abrir ou comentar a issue de falha da coleta
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          EXECUCAO: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          rotulo="coleta-falhou"
+          quando="$(TZ=America/Sao_Paulo date +'%d/%m/%Y %H:%M') (Brasília)"
+          aberta=$(gh issue list --state open --label "$rotulo" --json number --jq '.[0].number // empty')
+          if [ -n "$aberta" ]; then
+            gh issue comment "$aberta" --body "Nova falha em $quando: $EXECUCAO"
+          else
+            gh label create "$rotulo" --color B60205 --description "Falha na coleta automática" || true
+            gh issue create --label "$rotulo" --title "Coleta automática falhou" --body "A coleta de dados falhou em $quando.
+
+          Execução: $EXECUCAO
+
+          Causas comuns: fonte fora do ar ou recusando requisições, mudança no formato da resposta, conflito no push dos Parquet, ou série sem dado novo há mais de 2 dias úteis (passo \"Verificar atualização das fontes\").
+
+          Esta issue recebe um comentário a cada nova falha enquanto estiver aberta. Feche-a quando a coleta voltar a funcionar."
+          fi

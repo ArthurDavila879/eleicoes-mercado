@@ -87,3 +87,18 @@ Tudo descritivo: um único evento com janela completa, sem pretensão causal.
 5. **GDELT:** testar `sourcelang:portuguese` no lugar de `sourcecountry:brazil` (volumes
    muito baixos) ou migrar para o GDELT GKG/BigQuery para ter histórico desde janeiro.
 6. Opcional: rodar o dashboard no Streamlit Community Cloud lendo o DuckDB gerado no CI.
+
+## Rodada 2 (23/10/2026, noite): pré-registro e fases 1–4
+
+| Fase | Entrega | Commit |
+|---|---|---|
+| 0 | `PRE_REGISTRO.md` (plano do 2º turno antes do resultado), tag anotada `pre-registro-2turno` | `e313744` |
+| 1 | Patell, BMP (série temporal), Corrado, Holm, placebo (semente fixa) e sensibilidade de janela em `src/estatistica` + modelos Python do dbt; histórico de preços desde 2023; tela "Robustez" | `84748b7` |
+| 2 | Carteiras long-short BBAS3 − ITUB4 e PETR4 − PRIO3; volatilidade realizada e volume anormais; tela "Volatilidade e volume". Tesouro Direto omitido (download bloqueado, HTTP 429) | `11ffc54` |
+| 3 | App reconstrói o DuckDB a partir dos Parquet (Streamlit Community Cloud), dbt docs no GitHub Pages, badges e deploy no README | `1c464a0` |
+| 4 | Testes de atualização em dias úteis por série (tag `atualizacao`), verificação no fim da coleta e issue automática em caso de falha | (este commit) |
+
+Pendências: a PRIO3 de out/2026 chega com a próxima coleta da CI (até lá a carteira PETR4 − PRIO3
+fica `aguardando_dados` no repositório e a verificação de atualização acusa a PRIO3); ativar o
+GitHub Pages (Source: GitHub Actions) e criar o app no Streamlit Cloud; decidir entre branch
+`data` e Git LFS para os commits de dados; screenshot do dashboard em `docs/dashboard.png`.

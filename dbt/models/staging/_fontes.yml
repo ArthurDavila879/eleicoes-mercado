@@ -1,5 +1,9 @@
 version: 2
 
+# Testes de atualização (tag "atualizacao"): falham se o último dado de alguma série tiver mais
+# de 2 dias úteis de atraso. Ficam fora do "dbt build" normal (src.pipeline os exclui, para que
+# dados atrasados não impeçam o dashboard de ser construído) e rodam em
+# "python -m src.pipeline --verificar-atualizacao", no fim de cada coleta da CI.
 sources:
   - name: bruto
     description: Tabelas carregadas a partir dos Parquet de data/bruto/ por src/ingestao/carga.py
@@ -7,11 +11,46 @@ sources:
     tables:
       - name: bcb_sgs
         description: Séries do SGS/BCB (dólar venda, euro venda, meta Selic)
+        columns:
+          - name: data
+            tests:
+              - atualizado_em_dias_uteis:
+                  arguments:
+                    grupo: serie_nome
+                  config:
+                    tags: [atualizacao]
       - name: yahoo_diario
         description: Cotações diárias do Yahoo Finance
+        columns:
+          - name: data
+            tests:
+              - atualizado_em_dias_uteis:
+                  arguments:
+                    grupo: ticker
+                  config:
+                    tags: [atualizacao]
       - name: yahoo_horario
         description: Barras de 1h do Yahoo Finance (início da barra em UTC)
+        columns:
+          - name: data_hora_utc
+            tests:
+              - atualizado_em_dias_uteis:
+                  arguments:
+                    grupo: ticker
+                    converter_fuso: true
+                  config:
+                    tags: [atualizacao]
       - name: gdelt_diario
         description: Volume de notícias e tom médio diários por candidato (GDELT DOC 2.0)
+        columns:
+          # O GDELT recusa requisições com frequência e é só descritivo: atraso vira aviso
+          - name: data
+            tests:
+              - atualizado_em_dias_uteis:
+                  arguments:
+                    grupo: candidato
+                  config:
+                    tags: [atualizacao]
+                    severity: warn
       - name: eventos
         description: Eventos validados de data/eventos.csv

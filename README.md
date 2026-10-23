@@ -314,6 +314,7 @@ pip install -r requirements-dev.txt
 pytest -q                          # testes (sem rede, respostas mockadas)
 python -m src.pipeline             # coleta incremental + carga no DuckDB + dbt build
 python -m src.pipeline --sem-coleta  # só reprocessa os Parquet já existentes
+python -m src.pipeline --sem-coleta --verificar-atualizacao  # e falha se alguma série estiver atrasada
 streamlit run app.py               # dashboard em http://localhost:8501
 ```
 
@@ -382,6 +383,15 @@ eventos (ou manualmente, em **Actions → Documentação dbt → Run workflow**)
    pregão (13h17–21h17 UTC = 10h17–18h17 em Brasília) e uma vez à noite (01h47 UTC = 22h47),
    e commita os Parquet novos em `data/bruto/`. O `testes.yml` roda pytest e o pipeline
    (carga + dbt build) em todo push.
+
+**Monitoramento da coleta.** Ao fim de cada execução, o workflow constrói o banco e roda os
+testes de atualização das fontes (tag `atualizacao` no dbt): falham se o último dado de alguma
+série (por ticker, série do BCB ou candidato) tiver mais de **2 dias úteis** de atraso — o GDELT só
+gera aviso. Se qualquer passo da coleta falhar, o job `avisar_falha` abre uma issue com o rótulo
+`coleta-falhou`, ou comenta na que já estiver aberta (não duplica). Feche a issue quando a coleta
+voltar ao normal. Esses testes ficam fora do `dbt build` comum (`src.pipeline` os exclui), para
+que dados atrasados não impeçam o dashboard de ser construído; com o dbt direto, use
+`dbt build --exclude tag:atualizacao`.
 
 Observações: o GitHub pode atrasar execuções agendadas nos horários de pico e desativa
 agendamentos em repositórios públicos depois de 60 dias sem atividade. Se a coleta parar,

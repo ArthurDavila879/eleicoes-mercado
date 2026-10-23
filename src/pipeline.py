@@ -1,6 +1,10 @@
 """Pipeline completo: coleta → validação dos eventos → carga no DuckDB → dbt build.
 
-Uso: ``python -m src.pipeline [--sem-coleta] [--sem-dbt]``
+Uso: ``python -m src.pipeline [--sem-coleta] [--sem-dbt] [--verificar-atualizacao]``
+
+Os testes de atualização das fontes (tag ``atualizacao``: último dado com no máximo 2 dias
+úteis de atraso) ficam fora do ``dbt build``, para que dados atrasados não impeçam a construção
+do banco; ``--verificar-atualizacao`` os roda depois e falha se algum falhar.
 """
 
 from __future__ import annotations
@@ -24,9 +28,10 @@ def rodar_dbt(comando: str = "build", argumentos_extras: list[str] | None = None
     os.environ.setdefault("DUCKDB_PATH", str(config.CAMINHO_DUCKDB))
     # Raiz do repo no sys.path dos modelos Python (module_paths do profiles.yml)
     os.environ.setdefault("ELEICOES_RAIZ", str(config.RAIZ))
+    excluir = ["--exclude", "tag:atualizacao"] if comando == "build" else []
     resultado = dbtRunner().invoke(
         [comando, "--project-dir", str(config.DIR_DBT), "--profiles-dir", str(config.DIR_DBT)]
-        + (argumentos_extras or [])
+        + excluir + (argumentos_extras or [])
     )
     return bool(resultado.success)
 
@@ -35,6 +40,8 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--sem-coleta", action="store_true", help="usa só os Parquet existentes")
     parser.add_argument("--sem-dbt", action="store_true", help="não roda o dbt build")
+    parser.add_argument("--verificar-atualizacao", action="store_true",
+                        help="falha se o último dado de alguma fonte tiver mais de 2 dias úteis")
     args = parser.parse_args()
     configurar_saida()
 
@@ -46,6 +53,9 @@ def main() -> None:
             log.error("dbt build falhou")
             sys.exit(1)
         banco.gravar_impressao()  # o dashboard não precisa reconstruir este banco
+    if args.verificar_atualizacao and not rodar_dbt("test", ["--select", "tag:atualizacao"]):
+        log.error("Há fontes desatualizadas (mais de 2 dias úteis sem dados novos)")
+        sys.exit(1)
     log.info("Pipeline concluído")
 
 

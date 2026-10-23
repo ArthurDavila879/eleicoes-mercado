@@ -270,3 +270,20 @@ def test_atividade_anormal_calculada(banco):
     assert medidas[("volume", "BBAS3.SA")][1] > 0.05  # volume sem choque
     # Barras de 1h só desde abril: menos de 60 dias de estimação antes de 15/06
     assert medidas[("volatilidade_realizada", "PETR4.SA")][0] == "estimacao_insuficiente"
+
+
+
+# --- Fase 4: atualização das fontes (dias úteis) -----------------------------------------
+
+@pytest.mark.parametrize("hoje, atualizado", [
+    ("2026-08-03", True),   # segunda: último dado na sexta, 31/07
+    ("2026-08-05", True),   # quarta: segunda e terça sem dado = 2 dias úteis (limite)
+    ("2026-08-06", False),  # quinta: 3 dias úteis sem dado
+])
+def test_atualizacao_das_fontes_em_dias_uteis(banco, monkeypatch, tmp_path, hoje, atualizado):
+    caminho = banco.execute("select path from duckdb_databases() where database_name = current_database()").fetchone()[0]
+    monkeypatch.setenv("DUCKDB_PATH", caminho)
+    ok = pipeline.rodar_dbt("test", [
+        "--select", "tag:atualizacao", "--vars", f"{{data_referencia_atualizacao: '{hoje}'}}",
+        "--target-path", str(tmp_path / "target"), "--log-path", str(tmp_path / "logs")])
+    assert ok is atualizado

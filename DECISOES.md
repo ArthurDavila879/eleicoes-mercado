@@ -228,3 +228,22 @@ Decisões tomadas de forma autônoma durante a construção do projeto, com a ju
   só roda quando o código muda (os commits de dados da coleta não disparam workflows).
 - **Badges:** testes, coleta e documentação (workflows), Python 3.12 e dbt-duckdb. O screenshot
   fica como comentário no README até existir `docs/dashboard.png`.
+
+## Confiabilidade da coleta (Fase 4, 23/10/2026)
+- **Atualização em dias úteis, não em horas:** o `freshness` nativo das sources do dbt conta tempo
+  corrido (daria alarme toda segunda-feira) e roda num comando à parte. Foi criado o teste
+  genérico `atualizado_em_dias_uteis`: por grupo (ticker, série do BCB, candidato), conta os dias
+  de segunda a sexta estritamente entre a data do último dado e hoje (em Brasília) e falha se
+  passar de 2. Por grupo, e não pela tabela inteira, para pegar um único ticker parado (foi o que
+  aconteceu com a PRIO3 logo na criação do teste). Feriados não são descontados: um feriado
+  pode antecipar um alarme em um dia.
+- **Fora do `dbt build` comum:** testes de source que falham fazem o `dbt build` pular os modelos
+  que dependem da fonte, e o dashboard ficaria sem banco por causa de um ticker atrasado. Por isso
+  ficam na tag `atualizacao`, excluída por `src.pipeline` no build e rodada só com
+  `--verificar-atualizacao` (no workflow de coleta, depois do commit dos dados).
+- **GDELT só avisa** (`severity: warn`): recusa requisições com frequência e é só descritivo.
+- **Issue automática:** job `avisar_falha` (`if: failure()`, `issues: write`) com o `gh` do runner;
+  procura issue aberta com o rótulo `coleta-falhou` e comenta nela, senão cria (e cria o rótulo
+  se faltar).
+- **Proposta pendente — tirar os commits de dados do `main`:** avaliada e entregue ao usuário
+  (branch `data` separada vs. Git LFS); nada implementado até a decisão.
