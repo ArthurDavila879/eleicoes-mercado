@@ -6,6 +6,8 @@ from src import config
 from src.ingestao import armazenamento, gdelt
 from tests.conftest import RespostaFalsa, SessaoFalsa
 
+pytestmark = pytest.mark.usefixtures("sem_espera")
+
 VOLUME = {"query_details": {}, "timeline": [{"series": "Article Count", "data": [
     {"date": "20261003T000000Z", "value": 120, "norm": 50000},
     {"date": "20261004T000000Z", "value": 900, "norm": 52000}]}]}

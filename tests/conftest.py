@@ -40,9 +40,12 @@ def dir_bruto(tmp_path):
     return caminho
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture
 def sem_espera(monkeypatch):
-    """Elimina os ``time.sleep`` dos coletores para os testes rodarem rápido."""
+    """Elimina os ``time.sleep`` dos coletores para os testes rodarem rápido.
+
+    Não é automático: anular o sleep globalmente trava o executor do Streamlit (AppTest).
+    """
     import time
 
     monkeypatch.setattr(time, "sleep", lambda *_: None)

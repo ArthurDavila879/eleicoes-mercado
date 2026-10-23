@@ -1,7 +1,11 @@
 from datetime import date
 
+import pytest
+
 from src.ingestao import armazenamento, bcb
 from tests.conftest import RespostaFalsa, SessaoFalsa
+
+pytestmark = pytest.mark.usefixtures("sem_espera")
 
 RESPOSTAS = {
     "1": [{"data": "02/01/2026", "valor": "5.4321"}, {"data": "05/01/2026", "valor": "5.4400"}],
