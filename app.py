@@ -1,12 +1,17 @@
 """Dashboard Streamlit: reação do mercado brasileiro a eventos das eleições de 2026.
 
-Rodar: ``streamlit run app.py`` (porta 8501). Lê o DuckDB gerado por ``python -m src.pipeline``.
+Rodar: ``streamlit run app.py`` (porta 8501). Lê o DuckDB gerado por ``python -m src.pipeline``;
+se ele faltar ou estiver desatualizado em relação aos Parquet versionados, o próprio app o
+reconstrói na inicialização (carga + dbt, sem coleta) — é o que acontece no Streamlit Community
+Cloud. ``ELEICOES_SEM_CONSTRUCAO=1`` desliga a reconstrução.
 Tema escuro em ``.streamlit/config.toml``; cada tela do menu lateral abre com uma explicação.
 """
 
 from __future__ import annotations
 
+import os
 from datetime import timedelta
+from pathlib import Path
 
 import duckdb
 import numpy as np
@@ -15,7 +20,7 @@ import plotly.graph_objects as go
 import streamlit as st
 from plotly.subplots import make_subplots
 
-from src import config
+from src import banco, config
 
 st.set_page_config(page_title="Eleições 2026 × Mercado", page_icon="📈", layout="wide")
 
@@ -120,6 +125,15 @@ def consultar(sql: str) -> pd.DataFrame:
         return con.execute(sql).df()
     finally:
         con.close()
+
+
+@st.cache_resource(ttl=600, show_spinner="Preparando o banco de dados a partir dos dados versionados "
+                                         "(só quando os dados mudam; pode levar cerca de um minuto)…")
+def preparar_banco(caminho: str) -> str:
+    """Reconstrói o DuckDB se faltar ou estiver desatualizado (verificado a cada 10 min)."""
+    if os.environ.get("ELEICOES_SEM_CONSTRUCAO") == "1":
+        return "desativado"
+    return banco.garantir_banco(Path(caminho))
 
 
 def banco_pronto() -> bool:
@@ -238,6 +252,9 @@ def cabecalho(titulo: str, subtitulo: str, explicacao: str) -> None:
 
 # =====================================================================
 st.markdown(ESTILO, unsafe_allow_html=True)
+
+if preparar_banco(str(config.CAMINHO_DUCKDB)) == "construido":
+    consultar.clear()  # consultas em cache são do banco anterior
 
 if not banco_pronto():
     st.title("Eleições 2026 × mercado brasileiro")

@@ -10,7 +10,7 @@ import logging
 import os
 import sys
 
-from src import config
+from src import banco, config
 from src.ingestao import carga, coletar_tudo
 from src.ingestao.__main__ import configurar_saida
 
@@ -22,6 +22,8 @@ def rodar_dbt(comando: str = "build", argumentos_extras: list[str] | None = None
     from dbt.cli.main import dbtRunner
 
     os.environ.setdefault("DUCKDB_PATH", str(config.CAMINHO_DUCKDB))
+    # Raiz do repo no sys.path dos modelos Python (module_paths do profiles.yml)
+    os.environ.setdefault("ELEICOES_RAIZ", str(config.RAIZ))
     resultado = dbtRunner().invoke(
         [comando, "--project-dir", str(config.DIR_DBT), "--profiles-dir", str(config.DIR_DBT)]
         + (argumentos_extras or [])
@@ -39,9 +41,11 @@ def main() -> None:
     if not args.sem_coleta:
         log.info("Coleta: %s", coletar_tudo())
     log.info("Carga: %s", carga.carregar())
-    if not args.sem_dbt and not rodar_dbt("build"):
-        log.error("dbt build falhou")
-        sys.exit(1)
+    if not args.sem_dbt:
+        if not rodar_dbt("build"):
+            log.error("dbt build falhou")
+            sys.exit(1)
+        banco.gravar_impressao()  # o dashboard não precisa reconstruir este banco
     log.info("Pipeline concluído")
 
 

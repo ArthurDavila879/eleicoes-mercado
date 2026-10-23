@@ -22,7 +22,8 @@ metodologia (e a mesma consulta-base no GDELT) vale para todos.
 - `dbt/` — modelos: `staging` → `intermediario` (log-retornos, janelas) → `marts`
   (retornos anormais, CAR e significância; robustez em `fct_testes_robustez`,
   `fct_placebo_*` e `fct_sensibilidade_janelas`; volatilidade/volume em `fct_atividade_anormal`).
-- `app.py` — dashboard Streamlit (porta 8501).
+- `app.py` — dashboard Streamlit (porta 8501); reconstrói o DuckDB a partir dos Parquet se
+  faltar ou estiver desatualizado (`src/banco.py`), como no Streamlit Community Cloud.
 - `tests/` — pytest com respostas mockadas (sem rede).
 
 ## Comandos

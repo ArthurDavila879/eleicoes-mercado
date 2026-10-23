@@ -11,6 +11,8 @@ from tests.test_dbt_integracao import banco  # noqa: F401  (fixture do banco sin
 
 def _rodar(monkeypatch, caminho):
     monkeypatch.setattr(config, "CAMINHO_DUCKDB", caminho)
+    # Sem reconstrução automática: aqui o banco é o sintético (ou nenhum)
+    monkeypatch.setenv("ELEICOES_SEM_CONSTRUCAO", "1")
     app = AppTest.from_file(str(config.RAIZ / "app.py"), default_timeout=60)
     app.run()
     return app

@@ -212,3 +212,19 @@ Decisões tomadas de forma autônoma durante a construção do projeto, com a ju
   atualização em 16/10, uma semana de atraso. O pré-registro previa omitir a análise nesse caso.
   Alternativas para o futuro: ANBIMA (taxas indicativas, exige cadastro) ou a curva de DI futuro
   da B3.
+
+## Deploy e vitrine (Fase 3, 23/10/2026)
+- **Banco construído pelo próprio app** (`src/banco.py`): no Streamlit Community Cloud não há
+  build; o app reconstrói o DuckDB se ele faltar ou se a impressão digital (SHA-256 dos Parquet,
+  `eventos.csv`, projeto dbt e `src/**/*.py`) mudou. O pipeline grava a impressão ao terminar,
+  então um banco local feito com `python -m src.pipeline` não é refeito. A construção roda em
+  subprocesso porque o dbt-duckdb mantém a conexão de escrita aberta no processo, o que impediria
+  o app de abrir o arquivo em modo somente leitura. `st.cache_resource(ttl=600)`: uma construção
+  por processo e nova verificação a cada 10 min (o hash de ~3 MB é instantâneo).
+- **`module_paths` do dbt via `ELEICOES_RAIZ`** (definida pelo `src.pipeline`), com `.` e `..`
+  como reserva: não depende do diretório em que o Streamlit Cloud ou o Docker rodam o processo.
+- **dbt docs como página única** (`dbt docs generate --static` → `static_index.html`): não
+  depende de servir `manifest.json`/`catalog.json` ao lado. Publicado por GitHub Actions + Pages;
+  só roda quando o código muda (os commits de dados da coleta não disparam workflows).
+- **Badges:** testes, coleta e documentação (workflows), Python 3.12 e dbt-duckdb. O screenshot
+  fica como comentário no README até existir `docs/dashboard.png`.

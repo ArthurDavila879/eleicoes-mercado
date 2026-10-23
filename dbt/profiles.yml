@@ -6,6 +6,6 @@ eleicoes:
       # Mesmo arquivo usado pela carga (src/ingestao/carga.py); caminho relativo à raiz do repo
       path: "{{ env_var('DUCKDB_PATH', 'data/eleicoes.duckdb') }}"
       threads: 4
-      # Os modelos Python de robustez importam src.estatistica (raiz do repo ou, se o dbt
-      # for chamado de dentro de dbt/, o diretório pai)
-      module_paths: [".", ".."]
+      # Os modelos Python de robustez importam src.estatistica: raiz do repo (definida pelo
+      # src.pipeline) ou, chamando o dbt direto, o diretório atual e o pai (de dentro de dbt/)
+      module_paths: ["{{ env_var('ELEICOES_RAIZ', '.') }}", ".", ".."]

@@ -1,0 +1,66 @@
+name: Documentação dbt
+
+# Publica o dbt docs (modelos, colunas, testes e grafo de linhagem) no GitHub Pages.
+# Requer Settings → Pages → Source: "GitHub Actions".
+# Os commits da coleta automática (GITHUB_TOKEN) não disparam este workflow: a documentação
+# descreve o projeto dbt, não os dados, e só muda quando o código muda.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "dbt/**"
+      - "src/**"
+      - "data/eventos.csv"
+      - ".github/workflows/docs.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  gerar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Instalar dependências
+        run: pip install -r requirements.txt
+
+      # O catálogo (tipos e colunas) vem do banco: constrói com os dados versionados
+      - name: Construir o banco (carga + dbt build)
+        run: python -m src.pipeline --sem-coleta
+
+      - name: Gerar o dbt docs (página única)
+        env:
+          ELEICOES_RAIZ: ${{ github.workspace }}
+          DUCKDB_PATH: data/eleicoes.duckdb
+        run: |
+          dbt docs generate --static --project-dir dbt --profiles-dir dbt --target-path "$RUNNER_TEMP/dbt_docs"
+          mkdir -p site
+          cp "$RUNNER_TEMP/dbt_docs/static_index.html" site/index.html
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  publicar:
+    needs: gerar
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4

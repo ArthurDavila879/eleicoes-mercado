@@ -1,10 +1,24 @@
 # Eleições 2026 × mercado brasileiro — estudo de evento
 
+[![Testes](https://github.com/ArthurDavila879/eleicoes-mercado/actions/workflows/testes.yml/badge.svg)](https://github.com/ArthurDavila879/eleicoes-mercado/actions/workflows/testes.yml)
+[![Coleta de dados](https://github.com/ArthurDavila879/eleicoes-mercado/actions/workflows/coleta.yml/badge.svg)](https://github.com/ArthurDavila879/eleicoes-mercado/actions/workflows/coleta.yml)
+[![Documentação dbt](https://github.com/ArthurDavila879/eleicoes-mercado/actions/workflows/docs.yml/badge.svg)](https://arthurdavila879.github.io/eleicoes-mercado/)
+![Python 3.12](https://img.shields.io/badge/python-3.12-blue)
+![dbt-duckdb](https://img.shields.io/badge/dbt-duckdb-orange)
+
 > Engenharia + análise de dados que mede **como o mercado brasileiro reage a eventos das
 > eleições de 2026**. O projeto é neutro: mede a reação de preços, não avalia candidatos, e
 > aplica a mesma metodologia a todos os eventos e a mesma consulta de notícias a cada candidato.
 >
 > ⚠️ **Não é recomendação de investimento.**
+
+<!-- Screenshot do dashboard: salve a imagem em docs/dashboard.png e descomente a linha abaixo.
+![Dashboard: reação do mercado ao 1º turno](docs/dashboard.png)
+-->
+
+**Links:** dashboard (Streamlit Community Cloud — ver [Deploy](#deploy-do-dashboard-streamlit-community-cloud)) ·
+[documentação dbt e grafo de linhagem](https://arthurdavila879.github.io/eleicoes-mercado/) ·
+[pré-registro do 2º turno](PRE_REGISTRO.md) · [decisões de projeto](DECISOES.md)
 
 ## Pergunta
 
@@ -324,6 +338,33 @@ Edite `data/eventos.csv` (`data_hora` em ISO 8601 **com fuso**, ex. `2026-10-25T
 `tipo` ∈ debate, pesquisa, resultado, declaracao, outro; `descricao`; `fonte_url`). Inclua só
 eventos com data e hora verificáveis e a URL da fonte. Valide com `python -m src.eventos.validacao`.
 
+### Deploy do dashboard (Streamlit Community Cloud)
+
+O app não precisa de etapa de build: na inicialização, se o DuckDB não existe ou está
+desatualizado em relação aos Parquet versionados (impressão digital dos dados, do projeto dbt e
+do código), ele roda carga + `dbt build` (sem coleta) num subprocesso e guarda o resultado; a
+verificação se repete a cada 10 minutos e só reconstrói quando algo mudou (`src/banco.py`).
+
+1. Entre em [share.streamlit.io](https://share.streamlit.io) com a conta do GitHub e clique em
+   **Create app → Deploy a public app from GitHub**.
+2. Repositório `ArthurDavila879/eleicoes-mercado`, branch `main`, arquivo principal `app.py`.
+3. Em **Advanced settings**, escolha **Python 3.12**. Não há segredos a configurar.
+4. **Deploy.** A primeira abertura instala as dependências (`requirements.txt`) e constrói o
+   banco (cerca de 30 s a mais); as seguintes abrem direto.
+5. A coleta automática commita dados novos no `main`; o Streamlit Cloud atualiza o app sozinho
+   e o banco é reconstruído na próxima verificação.
+
+Para desligar a reconstrução automática (por exemplo, num servidor em que o pipeline roda à
+parte), defina `ELEICOES_SEM_CONSTRUCAO=1`.
+
+### Documentação dbt no GitHub Pages
+
+O workflow `.github/workflows/docs.yml` gera o `dbt docs` (modelos, colunas, testes e grafo de
+linhagem) como página única e publica no GitHub Pages a cada push que muda `dbt/`, `src/` ou os
+eventos (ou manualmente, em **Actions → Documentação dbt → Run workflow**). Para ativar:
+**Settings → Pages → Build and deployment → Source: GitHub Actions**. Endereço:
+<https://arthurdavila879.github.io/eleicoes-mercado/>.
+
 ### Subindo no GitHub (para a coleta automática funcionar)
 
 1. Crie um repositório vazio no GitHub (sem README) e envie o código:
@@ -361,9 +402,10 @@ workflows, então a coleta automática não aciona o workflow de testes a cada h
 │   ├── ingestao/              # bcb.py, yahoo.py, gdelt.py, armazenamento.py, carga.py
 │   ├── estatistica/           # estudo de evento em Python: Patell, BMP, Corrado, placebo
 │   ├── eventos/validacao.py
+│   ├── banco.py               # reconstrução automática do DuckDB pelo dashboard
 │   └── pipeline.py
 ├── tests/                     # pytest (mocks + integração dbt com dados sintéticos)
-├── .github/workflows/         # coleta.yml, testes.yml
+├── .github/workflows/         # coleta.yml, testes.yml, docs.yml (dbt docs no GitHub Pages)
 ├── DECISOES.md                # decisões de projeto
 ├── PRE_REGISTRO.md            # plano de análise do 2º turno, fixado antes do resultado
 └── Dockerfile, docker-compose.yml

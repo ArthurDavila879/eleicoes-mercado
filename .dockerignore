@@ -8,3 +8,4 @@ dbt/logs/
 logs/
 data/*.duckdb
 data/*.duckdb.wal
+data/*.impressao.json
