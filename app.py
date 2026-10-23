@@ -217,13 +217,35 @@ def rotulo_curto(ev) -> str:
 
 
 # ---------------- Gráficos ----------------
+def _intervalo_x(fig: go.Figure) -> tuple | None:
+    """Menor e maior data entre os pontos já desenhados na figura."""
+    valores = [pd.to_datetime(pd.Series(t.x)) for t in fig.data if t.x is not None and len(t.x)]
+    if not valores:
+        return None
+    todos = pd.concat(valores).dropna()
+    return (todos.min(), todos.max()) if len(todos) else None
+
+
 def marcar_eventos(fig: go.Figure, eventos: pd.DataFrame, selecionado: int | None = None,
                    janela: tuple | None = None, rotulos: bool = True) -> None:
     """Linhas verticais nos instantes dos eventos (o selecionado em destaque) e, se houver,
-    a janela do evento selecionado sombreada."""
+    a janela do evento selecionado sombreada.
+
+    Só marca eventos dentro do período dos dados já desenhados (linhas fora dele esticariam o
+    eixo: uma série de 2026 ficaria espremida num canto entre 2014 e 2026). Em períodos longos,
+    os dois turnos do mesmo ano ficam a 3 semanas um do outro e os rótulos se sobreporiam: só o
+    evento selecionado leva rótulo completo e os demais anos levam só o ano.
+    """
+    intervalo = _intervalo_x(fig)
+    if intervalo is not None:
+        margem = pd.Timedelta(days=1)
+        eventos = eventos[(eventos["data_hora_local"] >= intervalo[0] - margem)
+                          & (eventos["data_hora_local"] <= intervalo[1] + margem)]
+    longo = intervalo is not None and (intervalo[1] - intervalo[0]) > pd.Timedelta(days=150)
     if janela is not None:
         fig.add_vrect(x0=janela[0], x1=janela[1], fillcolor=CINZA, opacity=0.18, line_width=0, layer="below")
-    for _, ev in eventos.iterrows():
+    anos_rotulados = set()
+    for _, ev in eventos.sort_values("data_hora_local").iterrows():
         destaque = ev["evento_id"] == selecionado
         fig.add_vline(
             x=ev["data_hora_local"], line_width=1.5 if destaque else 1,
@@ -231,9 +253,20 @@ def marcar_eventos(fig: go.Figure, eventos: pd.DataFrame, selecionado: int | Non
         )
         if not rotulos:
             continue
+        ano = pd.Timestamp(ev["data_hora_local"]).year
+        if destaque:
+            texto = f"<b>{rotulo_curto(ev)}</b>"
+        elif not longo:
+            texto = rotulo_curto(ev)
+        elif ano in anos_rotulados or (selecionado in set(eventos["evento_id"]) and ano == pd.Timestamp(
+                eventos.loc[eventos["evento_id"] == selecionado, "data_hora_local"].iloc[0]).year):
+            continue  # o ano já tem rótulo (ou é o do evento selecionado)
+        else:
+            texto = str(ano)
+        anos_rotulados.add(ano)
         fig.add_annotation(
             x=ev["data_hora_local"], y=1, yref="paper", yanchor="bottom", showarrow=False,
-            text=f"<b>{rotulo_curto(ev)}</b>" if destaque else rotulo_curto(ev), font=dict(size=11),
+            text=texto, font=dict(size=11),
         )
 
 
@@ -290,7 +323,10 @@ resultados = consultar("select * from marts.resultados_eventos")
 # ---------------- Menu lateral ----------------
 with st.sidebar:
     st.markdown("### :material/how_to_vote: Eleições 2026 × Mercado")
-    tela = st.radio("Tela", list(TELAS), format_func=TELAS.get, label_visibility="collapsed")
+    # ?tela=<chave> na URL abre direto numa tela (links para compartilhar)
+    pedida = st.query_params.get("tela")
+    tela = st.radio("Tela", list(TELAS), format_func=TELAS.get, label_visibility="collapsed",
+                    index=list(TELAS).index(pedida) if pedida in TELAS else 0)
     st.divider()
     rotulos_evento = {
         int(r.evento_id): f"{rotulo_curto(r._asdict())} · {r.data_hora_local:%d/%m/%Y %H:%M}"
@@ -320,6 +356,12 @@ def janela_evento(freq: str) -> tuple | None:
         return ini - timedelta(hours=12), fim + timedelta(hours=12)
     # Barras horárias vêm em UTC e marcam o início da barra
     return ini - timedelta(hours=3), fim - timedelta(hours=2)
+
+
+def periodo_em_volta(ev) -> tuple[pd.Timestamp, pd.Timestamp]:
+    """~10 meses antes e ~2 meses depois do evento (o fim passa da última data, sem problema)."""
+    centro = pd.Timestamp(ev["data_hora_local"]).normalize()
+    return centro - timedelta(days=300), centro + timedelta(days=65)
 
 
 def resumo_evento() -> None:
@@ -560,16 +602,20 @@ def tela_tempo() -> None:
     c1, c2 = st.columns([3, 2])
     ativos_sel = c1.multiselect("Ativos", opcoes, default=["^BVSP", "PETR4.SA", "BRL=X"],
                                 format_func=lambda a: f"{nome_ativo.get(a, a)} ({a})")
-    granularidade = c2.radio("Granularidade", ["Diária (todo o período)", "Horária (±10 dias do evento)"],
-                             horizontal=True)
+    granularidade = c2.radio("Granularidade", ["Diária (1 ano em volta do evento)", "Diária (desde 2014)",
+                                               "Horária (±10 dias do evento)"], horizontal=True)
     if not ativos_sel:
         st.info("Selecione ao menos um ativo.")
         return
     lista = ", ".join(f"'{a}'" for a in ativos_sel)
     if granularidade.startswith("Diária"):
         janela = janela_evento("diaria")
+        filtro = ""
+        if "volta" in granularidade and evento is not None:
+            ini, fim = periodo_em_volta(evento)
+            filtro = f"and data between '{ini:%Y-%m-%d}' and '{fim:%Y-%m-%d}'"
         precos = consultar(f"select ativo, cast(data as timestamp) as tempo, preco "
-                           f"from staging.stg_precos_diarios where ativo in ({lista}) order by data")
+                           f"from staging.stg_precos_diarios where ativo in ({lista}) {filtro} order by data")
     else:
         janela = janela_evento("horaria")
         centro = evento["data_hora_utc"] if evento is not None else pd.Timestamp.now()
@@ -690,7 +736,13 @@ def tela_real() -> None:
         st.caption("Horário de Brasília, no fim de cada barra de 1h. Linha pontilhada: evento.")
 
     st.subheader("Séries do Banco Central (SGS)")
-    bcb = consultar("select serie_nome, cast(data as timestamp) as data, valor from staging.stg_bcb_series order by data")
+    filtro = ""
+    if evento is not None:
+        ini, fim = periodo_em_volta(evento)
+        filtro = f"where data between '{ini:%Y-%m-%d}' and '{fim:%Y-%m-%d}'"
+        st.caption(f"De {ini:%d/%m/%Y} a {min(fim, pd.Timestamp.now()):%d/%m/%Y}, em volta do evento selecionado.")
+    bcb = consultar(f"select serie_nome, cast(data as timestamp) as data, valor from staging.stg_bcb_series "
+                    f"{filtro} order by data")
     if bcb.empty:
         st.info("Sem dados do BCB.")
         return
