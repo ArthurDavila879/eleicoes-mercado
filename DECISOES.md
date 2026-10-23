@@ -247,3 +247,35 @@ Decisões tomadas de forma autônoma durante a construção do projeto, com a ju
   se faltar).
 - **Proposta pendente — tirar os commits de dados do `main`:** avaliada e entregue ao usuário
   (branch `data` separada vs. Git LFS); nada implementado até a decisão.
+
+## Ampliação da coleta (rodada 3, bloco A, 23/10/2026)
+- **Histórico diário desde 01/01/2014** (Yahoo e BCB), para as eleições de 2014, 2018 e 2022. Os
+  resultados de 2026 não mudam (conferido: diferenças < 1e-15), porque as janelas de estimação são
+  relativas ao evento.
+- **Placebo cortado em 2023:** o pré-registro fixou o placebo no histórico desde 01/01/2023. Com
+  preços desde 2014, a série do placebo é cortada nessa data (dados e estimação, e também o 1º
+  retorno, que usaria o preço de 2022) — var `placebo_inicio`. Conferido: as distribuições e os
+  p-valores empíricos da Fase 1 ficaram idênticos.
+- **ELET3 → AXIA3:** o Yahoo não tem mais `ELET3.SA` (404). A Eletrobras passou a se chamar AXIA
+  Energia; `AXIA3.SA` traz o histórico desde 2014 (o Yahoo identifica "AXIA Energia SA").
+- **BTC-BRL fora do Yahoo:** `BTC-BRL` não existe no Yahoo. O dólar implícito usa a Binance
+  (`BTCBRL` e `BTCUSDT`, mesma corretora e mesmo instante, API pública de dados de mercado).
+  Comparada ao Mercado Bitcoin nos últimos 30 dias, a Binance teve mais liquidez no par em reais
+  (mediana de 1,8 BTC/h contra 0,44). `BTC-USD` do Yahoo foi coletado como checagem cruzada. A
+  Binance pode bloquear IPs de alguns países; se falhar na CI, a coleta das outras fontes segue
+  e o teste de atualização da Binance só gera aviso.
+- **Minério de ferro (`TIO=F`) — série consistente, mas fraca:** sem lacunas desde 2014 e sem
+  preços repetidos por muitos dias (máx. 4), mas com volume zero em 97% dos dias (são preços de
+  ajuste do contrato da CME, com pouco negócio). A correlação diária com a VALE3 é só 0,19
+  (0,02 em 2018 e 0,04 em 2026), e a do minério do dia seguinte com a VALE3 é 0,12: o ajuste do
+  minério acontece em outro horário e parte da informação aparece com um dia de defasagem. Para
+  comparação, Brent × PETR4 = 0,41 no mesmo dia e ~0 defasado. O modelo VALE3 + minério é feito
+  como pedido, mas deve ser lido com essa ressalva.
+- **Filtro de pico isolado no Yahoo diário** (`stg_precos_diarios`): um preço que se afasta mais
+  de 0,3 em log dos dois vizinhos e reverte no pregão seguinte é descartado. Em 2014–2016 o
+  `COP=X` alterna valores como 2.399 e 24,25 (vírgula deslocada); sem o filtro, a média das
+  moedas de controle teria saltos de ±460%. Movimentos reais grandes (PRIO3 +61% em 24/03/2016)
+  não revertem e ficam.
+- **Teste de plausibilidade:** limite subiu de 0,5 para 0,7 em log (o salto real da PRIO3 em 2016
+  passaria de 0,5) e vale só para os ativos usados nos modelos; fatores globais e cripto ficam
+  fora (o VIX sobe 77% num dia).

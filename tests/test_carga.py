@@ -7,7 +7,8 @@ from src.ingestao import armazenamento, carga
 def test_carga_cria_tabelas_mesmo_sem_dados(tmp_path, dir_bruto):
     db = tmp_path / "t.duckdb"
     contagens = carga.carregar(db, dir_bruto, tmp_path / "nao_existe.csv")
-    assert contagens == {"bcb_sgs": 0, "yahoo_diario": 0, "yahoo_horario": 0, "gdelt_diario": 0, "eventos": 0}
+    assert contagens == {"bcb_sgs": 0, "yahoo_diario": 0, "yahoo_horario": 0, "binance_horario": 0,
+                         "gdelt_diario": 0, "eventos": 0}
 
 
 def test_carga_le_parquet_e_eventos_e_e_idempotente(tmp_path, dir_bruto):

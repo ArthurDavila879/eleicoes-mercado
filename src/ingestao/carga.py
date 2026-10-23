@@ -29,6 +29,10 @@ ESQUEMAS: dict[str, str] = {
         "ticker VARCHAR, data_hora_utc TIMESTAMP, abertura DOUBLE, maxima DOUBLE, "
         "minima DOUBLE, fechamento DOUBLE, volume DOUBLE"
     ),
+    "binance_horario": (
+        "par VARCHAR, data_hora_utc TIMESTAMP, abertura DOUBLE, maxima DOUBLE, minima DOUBLE, "
+        "fechamento DOUBLE, volume DOUBLE"
+    ),
     "gdelt_diario": (
         "candidato VARCHAR, data TIMESTAMP, consulta VARCHAR, n_artigos BIGINT, "
         "total_monitorado BIGINT, tom_medio DOUBLE"

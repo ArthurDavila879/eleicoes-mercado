@@ -138,8 +138,9 @@ def placebo(
     parametros: dict[str, dict],
     n: int,
     semente: int,
+    inicio: str | None = None,
 ) -> pd.DataFrame:
-    """Distribuição placebo de CAR por ativo × frequência × versão.
+    """Distribuição placebo de CAR por ativo × frequência × versão (pseudodia 0 desde ``inicio``).
 
     Versões: ``restrita`` (pseudodia 0 só em início de sessão, como o evento real de
     domingo — a principal) e ``irrestrita`` (qualquer pregão/barra).
@@ -155,7 +156,7 @@ def placebo(
             for versao, restrito in [("restrita", True), ("irrestrita", False)]:
                 rng = ee.semente_grupo(semente, ativo, freq, versao)
                 d = ee.placebo(serie, freq, cfg["jan"], cfg["est"], reais, cfg["min_est"],
-                               n, rng, restrito)
+                               n, rng, restrito, inicio)
                 distribuicoes.append(d.assign(frequencia=freq, ativo=ativo, versao=versao))
     colunas = ["frequencia", "ativo", "versao", "idx0", "tempo0", "car", "estatistica_t"]
     if not distribuicoes:
@@ -207,6 +208,7 @@ def ler_parametros(bruto) -> dict:
         janelas_sensibilidade=ler_janelas_sensibilidade(v["janelas_sensibilidade"]),
         placebo_n=int(v["placebo_n"]),
         placebo_semente=int(v["placebo_semente"]),
+        placebo_inicio=v.get("placebo_inicio"),
         fuso_offset_horas=int(v.get("fuso_offset_horas", -3)),
         hora_corte_pregao=int(v.get("hora_corte_pregao", 17)),
     )

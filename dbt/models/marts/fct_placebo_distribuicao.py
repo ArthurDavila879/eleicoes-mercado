@@ -15,4 +15,5 @@ def model(dbt, session):
         "horaria": (dbt.ref("int_retornos_horarios_ref").df(), dbt.ref("int_janelas_horarias").df()),
     }
     return robustez.placebo(
-        dbt.ref("resultados_eventos").df(), dados, p["freq"], p["placebo_n"], p["placebo_semente"])
+        dbt.ref("resultados_eventos").df(), dados, p["freq"], p["placebo_n"], p["placebo_semente"],
+        p["placebo_inicio"])

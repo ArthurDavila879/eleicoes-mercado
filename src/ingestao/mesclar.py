@@ -11,7 +11,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from src.ingestao import armazenamento, bcb, gdelt, yahoo
+from src.ingestao import armazenamento, bcb, binance, gdelt, yahoo
 
 # fonte -> (chaves, coluna de tempo)
 FONTES: dict[str, tuple[list[str], str]] = {
@@ -19,6 +19,7 @@ FONTES: dict[str, tuple[list[str], str]] = {
     gdelt.FONTE: (["candidato", "data"], "data"),
     yahoo.FONTE_DIARIO: (["ticker", "data"], "data"),
     yahoo.FONTE_HORARIO: (["ticker", "data_hora_utc"], "data_hora_utc"),
+    binance.FONTE: (["par", "data_hora_utc"], "data_hora_utc"),
 }
 
 

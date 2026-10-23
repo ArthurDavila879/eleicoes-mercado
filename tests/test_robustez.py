@@ -224,3 +224,20 @@ def test_ler_parametros_do_dbt():
     assert p["freq"]["horaria"]["jan"] == (-2, 5)
     assert p["janelas_sensibilidade"] == [(0, 0), (-5, 5)]
     assert p["placebo_semente"] == 20261025
+
+
+def test_placebo_com_inicio_ignora_dados_anteriores():
+    # Cortar a série em ``inicio`` equivale a rodar o placebo numa série que começa ali
+    serie = _serie()
+    inicio = pd.Timestamp(serie.tempo[150])
+    reais = np.arange(_idx0() + JAN[0], _idx0() + JAN[1] + 1)
+    rng = lambda: ee.semente_grupo(1, "X", "diaria", "v")  # noqa: E731
+    cortada = _placebo_com(serie, reais, rng(), inicio=str(inicio.date()))
+    manter = np.arange(N_DIAS) > 150  # o 1º retorno a partir do corte também sai
+    sub = ee.Serie(serie.idx[manter], serie.tempo[manter], serie.r[manter], serie.ref[manter], serie.modelo)
+    pd.testing.assert_frame_equal(cortada, _placebo_com(sub, reais, rng()))
+    assert pd.to_datetime(cortada["tempo0"]).min() > inicio
+
+
+def _placebo_com(serie, reais, rng, inicio=None):
+    return ee.placebo(serie, "diaria", JAN, EST, reais, 60, 1000, rng, False, inicio)

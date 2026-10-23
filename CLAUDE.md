@@ -13,7 +13,7 @@ metodologia (e a mesma consulta-base no GDELT) vale para todos.
 - Decisões de projeto ficam registradas em `DECISOES.md`.
 
 ## Estrutura
-- `src/ingestao/` — coletores (BCB/SGS, yfinance, GDELT), armazenamento Parquet
+- `src/ingestao/` — coletores (BCB/SGS, yfinance, GDELT, Binance), armazenamento Parquet
   particionado por mês em `data/bruto/` e carga no DuckDB (`data/eleicoes.duckdb`).
 - `src/eventos/` — validação de `data/eventos.csv`.
 - `src/estatistica/` — estudo de evento em Python (Patell, BMP, Corrado, placebo, sensibilidade),

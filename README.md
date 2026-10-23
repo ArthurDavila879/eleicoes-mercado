@@ -72,11 +72,14 @@ DuckDB é reconstruído a partir deles a cada execução.
 |---|---|---|---|
 | [BCB / SGS](https://dadosabertos.bcb.gov.br/) | Dólar venda (série 1), euro venda (21619), meta Selic (432) | diária | códigos confirmados no catálogo de dados abertos do BCB |
 | [Yahoo Finance](https://finance.yahoo.com/) via `yfinance` | `^BVSP`, `PETR4.SA`, `VALE3.SA`, `ITUB4.SA`, `BBAS3.SA`, `PRIO3.SA` (só na carteira long-short), `BRL=X`, controles `MXN=X`, `CLP=X`, `COP=X`, `ZAR=X` e mercado global `EEM` (só diário) | diária e 1h | horários em UTC; ações diárias ajustadas por proventos |
+| [Yahoo Finance](https://finance.yahoo.com/) — ampliação | ações `PETR3`, `BBDC4`, `AXIA3` (Eletrobras, ex-`ELET3`), `SBSP3`, `CMIG4`, `MRVE3`, `COGN3`, `MGLU3`; fatores globais `BZ=F` (Brent), `TIO=F` (minério de ferro), `DX-Y.NYB`, `^VIX`, `^TNX` (só diário); `BTC-USD` | diária e 1h | os fatores entram nos modelos multifatoriais ou como contexto; não têm CAR próprio |
+| [Binance](https://developers.binance.com/docs/binance-spot-api-docs/rest-api/market-data-endpoints) (dados públicos) | `BTCBRL` e `BTCUSDT` | 1h, 24 h por dia | dólar implícito nos fins de semana; o Yahoo não tem BTC-BRL |
 | [GDELT DOC 2.0](https://blog.gdeltproject.org/gdelt-doc-2-0-api-debuts/) | nº de artigos e tom médio por dia | diária | mesma consulta-base para cada candidato do 2º turno |
 | `data/eventos.csv` | eventos com data/hora, tipo, descrição e fonte | — | só eventos com data certa e verificável |
 
-Período: desde 01/01/2026 no estudo, com histórico de preços desde 01/01/2023 (diário, Yahoo e
-BCB) e dos últimos ~720 dias (barras de 1h, limite do Yahoo), usado só pelo teste placebo. A
+Período: preços diários (Yahoo e BCB) desde 01/01/2014, para incluir as eleições de 2014, 2018 e
+2022; barras de 1h dos últimos ~720 dias (limite do Yahoo); Binance desde nov/2020. O placebo usa
+só a série a partir de 01/01/2023, como no pré-registro. A
 coleta é incremental (cada execução só baixa o que falta, com uma pequena sobreposição para
 corrigir barras parciais) e completa sozinha o histórico que faltar antes do 1º registro.
 
@@ -409,7 +412,7 @@ workflows, então a coleta automática não aciona o workflow de testes a cada h
 ├── dbt/                       # projeto dbt-duckdb (staging → intermediario → marts)
 ├── src/
 │   ├── config.py
-│   ├── ingestao/              # bcb.py, yahoo.py, gdelt.py, armazenamento.py, carga.py
+│   ├── ingestao/              # bcb.py, yahoo.py, gdelt.py, binance.py, armazenamento.py, carga.py
 │   ├── estatistica/           # estudo de evento em Python: Patell, BMP, Corrado, placebo
 │   ├── eventos/validacao.py
 │   ├── banco.py               # reconstrução automática do DuckDB pelo dashboard

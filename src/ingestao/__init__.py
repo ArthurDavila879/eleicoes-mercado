@@ -1,4 +1,4 @@
-"""Ingestão de dados: BCB/SGS, Yahoo Finance e GDELT → Parquet → DuckDB."""
+"""Ingestão de dados: BCB/SGS, Yahoo Finance, GDELT e Binance → Parquet → DuckDB."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from pathlib import Path
 log = logging.getLogger(__name__)
 
 
-FONTES = ("bcb_sgs", "yahoo", "gdelt")
+FONTES = ("bcb_sgs", "yahoo", "gdelt", "binance")
 
 
 def coletar_tudo(
@@ -23,10 +23,11 @@ def coletar_tudo(
     Retorna, por fonte, o nº de linhas novas ou a mensagem de erro.
     Levanta ``RuntimeError`` se TODAS as fontes falharem.
     """
-    from src.ingestao import bcb, gdelt, yahoo
+    from src.ingestao import bcb, binance, gdelt, yahoo
 
     resultado: dict[str, object] = {}
-    coletores = {"bcb_sgs": bcb.coletar, "yahoo": yahoo.coletar, "gdelt": gdelt.coletar}
+    coletores = {"bcb_sgs": bcb.coletar, "yahoo": yahoo.coletar, "gdelt": gdelt.coletar,
+                 "binance": binance.coletar}
     desconhecidas = set(fontes) - set(coletores)
     if desconhecidas:
         raise ValueError(f"Fontes desconhecidas: {sorted(desconhecidas)}")

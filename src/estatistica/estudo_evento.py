@@ -208,14 +208,24 @@ def placebo(
     n: int,
     rng: np.random.Generator,
     restrito: bool,
+    inicio: str | None = None,
 ) -> pd.DataFrame:
     """CAR de pseudoeventos sorteados sem reposição entre as posições elegíveis.
 
     Elegível: a janela do pseudoevento cabe nos dados e não toca nenhuma janela real
     (``janelas_reais`` = idx dentro delas), há dados e estimação suficientes para o p-valor (mesmas regras do
-    estudo real) e, se ``restrito``, a posição é um início de sessão.
+    estudo real) e, se ``restrito``, a posição é um início de sessão. ``inicio``: data mínima
+    do pseudodia 0 (o histórico de preços é mais longo que o período do placebo).
     """
     candidatos = []
+    if inicio is not None:  # o placebo só enxerga a série a partir de ``inicio`` (estimação inclusive)
+        # se houver dados antes de ``inicio``, o 1º retorno a partir dele também sai (ele usa
+        # o preço anterior a ``inicio``)
+        manter = pd.to_datetime(pd.Series(serie.tempo)).to_numpy() >= np.datetime64(pd.Timestamp(inicio))
+        if not manter.all() and manter.any():
+            manter[np.argmax(manter)] = False
+        serie = Serie(idx=serie.idx[manter], tempo=serie.tempo[manter], r=serie.r[manter],
+                      ref=serie.ref[manter], modelo=serie.modelo)
     marca = inicio_de_sessao(serie.tempo, frequencia) if restrito else np.ones(len(serie.idx), bool)
     reais = set(janelas_reais.tolist())
     ultimo = serie.idx.max()

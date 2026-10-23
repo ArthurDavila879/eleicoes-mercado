@@ -5,8 +5,23 @@ VALE3.SA,Vale ON,acao,mercado
 ITUB4.SA,Itaú Unibanco PN,acao,mercado
 BBAS3.SA,Banco do Brasil ON,acao,mercado
 PRIO3.SA,PRIO ON,acao,nenhum
+PETR3.SA,Petrobras ON,acao,mercado
+BBDC4.SA,Bradesco PN,acao,mercado
+AXIA3.SA,Eletrobras ON (AXIA3),acao,mercado
+SBSP3.SA,Sabesp ON,acao,mercado
+CMIG4.SA,Cemig PN,acao,mercado
+MRVE3.SA,MRV ON,acao,mercado
+COGN3.SA,Cogna ON,acao,mercado
+MGLU3.SA,Magazine Luiza ON,acao,mercado
+BZ=F,Petróleo Brent (futuro),fator_global,nenhum
+TIO=F,Minério de ferro 62% (futuro),fator_global,nenhum
+DX-Y.NYB,Índice do dólar (DXY),fator_global,nenhum
+^VIX,VIX (volatilidade implícita S&P 500),fator_global,nenhum
+^TNX,Treasury 10 anos (taxa × 10),fator_global,nenhum
+BTC-USD,Bitcoin (USD),cripto,nenhum
 LS_BBAS3_ITUB4,Long-short Banco do Brasil − Itaú (BBAS3 − ITUB4),carteira,mercado
 LS_PETR4_PRIO3,Long-short Petrobras − PRIO (PETR4 − PRIO3),carteira,mercado
+LS_PETR3_PETR4,Spread Petrobras ON − PN (PETR3 − PETR4),carteira,mercado
 BRL=X,Real (USD/BRL Yahoo),moeda_brasil,controle_moedas
 BCB_DOLAR,Real (USD/BRL BCB/SGS venda),moeda_brasil,controle_moedas
 MXN=X,Peso mexicano (USD/MXN),moeda_controle,nenhum

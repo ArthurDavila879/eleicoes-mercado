@@ -15,9 +15,11 @@ DIR_DBT = RAIZ / "dbt"
 
 # Início do período de estudo (coleta desde esta data)
 DATA_INICIO = date(2026, 1, 1)
-# Histórico de preços (Yahoo diário e BCB/SGS) desde 2023, usado só pelo teste placebo: as
-# janelas de estimação dos eventos reais caem em 2026 e não mudam (ver PRE_REGISTRO.md).
-DATA_INICIO_PRECOS = date(2023, 1, 1)
+# Histórico de preços (Yahoo diário e BCB/SGS) desde 2014, para estudar as eleições de 2014,
+# 2018 e 2022 (só na frequência diária). O placebo continua usando só datas desde 2023, como
+# no pré-registro (var placebo_inicio do dbt). As janelas de estimação dos eventos de 2026 não
+# mudam com o histórico mais longo.
+DATA_INICIO_PRECOS = date(2014, 1, 1)
 # O Yahoo só fornece barras de 1h dos últimos ~730 dias; margem de segurança
 HISTORICO_MAX_HORARIO_DIAS = 720
 # Tolerância para considerar o histórico completo (o 1º dia pode ser feriado/fim de semana)
@@ -36,14 +38,28 @@ SERIES_SGS: dict[int, str] = {
 # Ativos brasileiros (Ibovespa, ações e real) e moedas de controle (emergentes).
 # Todas as moedas estão cotadas como "unidades da moeda local por 1 USD".
 # PRIO3 só entra na carteira long-short PETR4 − PRIO3 (dbt/seeds/carteiras.csv).
-ATIVOS_BRASIL = ["^BVSP", "PETR4.SA", "VALE3.SA", "ITUB4.SA", "BBAS3.SA", "PRIO3.SA", "BRL=X"]
+# AXIA3 = Eletrobras (ELET3 até a troca de nome para AXIA Energia; o Yahoo não tem mais ELET3.SA).
+ATIVOS_BRASIL = [
+    "^BVSP", "PETR4.SA", "VALE3.SA", "ITUB4.SA", "BBAS3.SA", "PRIO3.SA", "BRL=X",
+    "PETR3.SA", "BBDC4.SA", "AXIA3.SA", "SBSP3.SA", "CMIG4.SA", "MRVE3.SA", "COGN3.SA", "MGLU3.SA",
+]
 MOEDAS_CONTROLE = ["MXN=X", "CLP=X", "COP=X", "ZAR=X"]
 # Mercado global para o modelo de mercado do Ibovespa: ETF iShares MSCI Emerging Markets
 # (NYSE, em USD). Só diário: as barras de 1h dos EUA começam na meia hora (13:30 UTC) e
 # não se alinham às da B3.
 MERCADO_GLOBAL = "EEM"
-TICKERS_YAHOO = ATIVOS_BRASIL + MOEDAS_CONTROLE + [MERCADO_GLOBAL]
-TICKERS_SO_DIARIO = [MERCADO_GLOBAL]
+# Fatores e indicadores globais (só diário): Brent e minério de ferro (modelos multifatoriais),
+# índice do dólar (DXY), VIX e juro de 10 anos dos EUA (^TNX = taxa × 10), para contexto.
+FATORES_GLOBAIS = ["BZ=F", "TIO=F", "DX-Y.NYB", "^VIX", "^TNX"]
+# Bitcoin em dólar (diário e 1h): checagem cruzada do dólar implícito (ver binance.py)
+CRIPTO_YAHOO = ["BTC-USD"]
+TICKERS_YAHOO = ATIVOS_BRASIL + MOEDAS_CONTROLE + [MERCADO_GLOBAL] + FATORES_GLOBAIS + CRIPTO_YAHOO
+TICKERS_SO_DIARIO = [MERCADO_GLOBAL] + FATORES_GLOBAIS
+
+# --- Binance (dados públicos de mercado): bitcoin em reais e em USDT, barras de 1h ---
+PARES_BINANCE = ["BTCBRL", "BTCUSDT"]
+# O par BTCBRL existe desde 13/10/2020; a coleta começa em nov/2020 (inclui as eleições de 2022)
+DATA_INICIO_CRIPTO = date(2020, 11, 1)
 
 # Sobreposição (re-coleta) para corrigir barras parciais/revisadas na coleta incremental
 SOBREPOSICAO_DIAS_DIARIO = 5

@@ -40,6 +40,19 @@ sources:
                     converter_fuso: true
                   config:
                     tags: [atualizacao]
+      - name: binance_horario
+        description: Barras de 1h de BTCBRL e BTCUSDT na Binance (início da barra em UTC)
+        columns:
+          # Fonte nova e auxiliar (dólar implícito): atraso vira aviso
+          - name: data_hora_utc
+            tests:
+              - atualizado_em_dias_uteis:
+                  arguments:
+                    grupo: par
+                    converter_fuso: true
+                  config:
+                    tags: [atualizacao]
+                    severity: warn
       - name: gdelt_diario
         description: Volume de notícias e tom médio diários por candidato (GDELT DOC 2.0)
         columns:
