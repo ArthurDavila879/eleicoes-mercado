@@ -1,0 +1,11 @@
+# Tema escuro do dashboard (inspirado em painéis de corretora: cards sobre fundo escuro)
+[theme]
+base = "dark"
+primaryColor = "#19c37d"
+backgroundColor = "#14161a"
+secondaryBackgroundColor = "#1d2026"
+textColor = "#e6e7e9"
+font = "sans serif"
+
+[browser]
+gatherUsageStats = false

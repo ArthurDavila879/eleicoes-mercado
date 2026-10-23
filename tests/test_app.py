@@ -34,10 +34,20 @@ def test_dashboard_com_dados(monkeypatch, tmp_path, banco):  # noqa: F811
 
     app = _rodar(monkeypatch, copia)
     assert not app.exception, app.exception
-    assert len(app.tabs) == 5
-    assert len(app.dataframe) >= 1  # tabela de CAR
-    # Troca para a frequência horária e para o 2º evento (sem dados): sem erros
-    app.sidebar.radio[0].set_value("horaria").run()
-    assert not app.exception
-    app.sidebar.selectbox[0].set_value(2).run()
-    assert not app.exception
+    # Painel (tela inicial): explicação e um card por ativo com preço
+    assert any("Como ler esta tela" in m.value for m in app.markdown)
+    assert any("card-nome" in m.value and "Ibovespa" in m.value for m in app.markdown)
+
+    menu = app.sidebar.radio[0]
+    telas = list(menu.options)
+    assert len(telas) == 6
+    # Percorre todas as telas, no evento com dados e no evento futuro (sem dados)
+    for evento_id in (1, 2):
+        app.sidebar.selectbox[0].set_value(evento_id).run()
+        for tela in ["painel", "evento", "tempo", "real", "noticias", "metodo"]:
+            app.sidebar.radio[0].set_value(tela).run()
+            assert not app.exception, (evento_id, tela, app.exception)
+            if tela == "evento":
+                assert len(app.dataframe) == 1  # tabela de CAR
+                app.radio[0].set_value("horaria").run()  # frequência horária
+                assert not app.exception
