@@ -25,6 +25,8 @@ metodologia (e a mesma consulta-base no GDELT) vale para todos.
 - `app.py` — dashboard Streamlit (porta 8501); reconstrói o DuckDB a partir dos Parquet se
   faltar ou estiver desatualizado (`src/banco.py`), como no Streamlit Community Cloud.
 - `tests/` — pytest com respostas mockadas (sem rede).
+- `docs/` — RESULTADOS.md (tabelas), METODOLOGIA.md (detalhes e limitações), OPERACAO.md
+  (deploy, Pages, CI) e dashboard.png; o README fica curto, com os achados no topo.
 
 ## Comandos
 ```bash

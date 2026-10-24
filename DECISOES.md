@@ -356,3 +356,12 @@ Decisões tomadas de forma autônoma durante a construção do projeto, com a ju
 - **Novas seções:** multifatorial na tela de reação (diária), dólar implícito na tela do real e
   tela "Eleições 2014–2026" (matriz de CAR e análise agregada, com a opção de mostrar só os
   ativos do estudo principal).
+
+## Apresentação do repositório (24/10/2026)
+- **README curto**, com "Em poucas palavras" (para leigos), "Principais achados" e uma imagem do
+  dashboard no topo. As tabelas detalhadas foram para `docs/RESULTADOS.md`; os detalhes de
+  método e as limitações, para `docs/METODOLOGIA.md`; deploy, Pages e CI, para `docs/OPERACAO.md`.
+- **`RESUMO.md` removido:** era um relatório das sessões de trabalho, não documentação do
+  projeto, e estava desatualizado. O histórico fica nos commits e neste arquivo.
+- **About do GitHub** (descrição, site e tópicos) e **GitHub Pages** (fonte: GitHub Actions)
+  configurados pela API.
