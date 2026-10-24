@@ -10,6 +10,7 @@ Tema escuro em ``.streamlit/config.toml``; cada tela do menu lateral abre com um
 from __future__ import annotations
 
 import os
+import zlib
 from datetime import timedelta
 from pathlib import Path
 
@@ -45,6 +46,16 @@ COR_ATIVO = {
     # Carteiras long-short (Fase 2): tons fora da paleta base, para não repetir as ações das pontas
     "LS_BBAS3_ITUB4": "#1fb5ad", "LS_PETR4_PRIO3": "#b5a01f",
 }
+# Demais séries (ações novas, fatores globais, cripto, moedas de controle): cores estáveis por
+# nome, fora das usadas acima, para poderem aparecer nos gráficos de preços
+CORES_EXTRAS = ["#7f9cc0", "#c0907f", "#8fbf7f", "#bf7fb0", "#7fbfbf", "#bfa97f", "#a28fd6", "#d68f8f",
+                "#6fa8dc", "#e0a458", "#93c47d", "#c27ba0"]
+
+
+def cor_ativo(ativo: str) -> str:
+    return COR_ATIVO.get(ativo) or CORES_EXTRAS[zlib.crc32(ativo.encode()) % len(CORES_EXTRAS)]
+
+
 # Candidatos: cores sem associação partidária (laranja e água), atribuídas em ordem alfabética
 COR_CANDIDATO = {c: cor for c, cor in zip(sorted(config.CANDIDATOS_2_TURNO), [PALETA[1], PALETA[2]])}
 NOMES_STATUS = {
@@ -528,7 +539,7 @@ def tela_evento() -> None:
         for ativo, parte in ar.groupby("ativo"):
             fig.add_trace(go.Scatter(
                 x=parte["rel"], y=parte["car_acumulado"] * 100, mode="lines+markers",
-                name=nome_ativo.get(ativo, ativo), line=dict(width=2, color=COR_ATIVO.get(ativo, CINZA)),
+                name=nome_ativo.get(ativo, ativo), line=dict(width=2, color=cor_ativo(ativo)),
                 marker=dict(size=8), hovertemplate="%{y:.2f}%",
             ))
         fig.add_vline(x=-0.5, line_dash="dot", line_color=CINZA)
@@ -573,8 +584,11 @@ def tela_evento() -> None:
     if frequencia == "diaria" and evento_id is not None:
         multi = consultar(f"select * from marts.fct_modelo_multifatorial where evento_id = {int(evento_id)} "
                           f"and p_valor is not null")
-        if not multi.empty:
-            st.markdown("**Modelo multifatorial (exploratório): mercado + commodity**")
+        st.markdown("**Modelo multifatorial (exploratório): mercado + commodity**")
+        if multi.empty:
+            st.info("Sem resultado do modelo multifatorial para este evento: faltam dados do Brent ou do minério "
+                    "na janela (a coleta automática traz o mês corrente) ou o evento ainda não aconteceu.")
+        else:
             st.dataframe(pd.DataFrame({
                 "Ativo": multi["ativo"].map(lambda a: nome_ativo.get(a, a)),
                 "Fator": multi["fator"].map(lambda a: nome_ativo.get(a, a)),
@@ -604,7 +618,7 @@ def tela_tempo() -> None:
         "faixa sombreada é a janela do evento selecionado. Na visão <b>horária</b> dá para ver em que hora do "
         "pregão o movimento aconteceu. Passe o mouse para ver o preço original.",
     )
-    opcoes = [a for a in ativos["ativo"] if a in COR_ATIVO]
+    opcoes = list(ativos["ativo"])  # todas as séries com preço diário (ações, fatores, moedas, carteiras)
     c1, c2 = st.columns([3, 2])
     ativos_sel = c1.multiselect("Ativos", opcoes, default=["^BVSP", "PETR4.SA", "BRL=X"],
                                 format_func=lambda a: f"{nome_ativo.get(a, a)} ({a})")
@@ -641,7 +655,7 @@ def tela_tempo() -> None:
         formato = FORMATO_PRECO.get(classe_ativo.get(ativo), FORMATO_PRECO_PADRAO)
         fig.add_trace(go.Scatter(
             x=parte["tempo"], y=parte["indice"], mode="lines", name=nome_ativo.get(ativo, ativo),
-            line=dict(width=2, color=COR_ATIVO.get(ativo, CINZA)),
+            line=dict(width=2, color=cor_ativo(ativo)),
             customdata=parte["preco"], hovertemplate=f"%{{y:.1f}} ({formato})",
         ))
     marcar_eventos(fig, eventos, evento_id, janela)
@@ -788,7 +802,7 @@ def tela_linha() -> None:
         "candidato). As linhas verticais marcam os eventos. Serve para ver o contexto em volta de cada evento — "
         "picos de notícia, tendências anteriores —, não para tirar conclusões causais.",
     )
-    opcoes = [a for a in ativos["ativo"] if a in COR_ATIVO]
+    opcoes = list(ativos["ativo"])  # todas as séries com preço diário (ações, fatores, moedas, carteiras)
     c1, c2 = st.columns([3, 2])
     selecionados = c1.multiselect("Ativos", opcoes, default=["^BVSP", "BRL=X"], key="ativos_linha",
                                   format_func=lambda a: f"{nome_ativo.get(a, a)} ({a})")
@@ -813,7 +827,7 @@ def tela_linha() -> None:
         if parte.empty:
             continue
         fig.add_trace(go.Scatter(x=parte["tempo"], y=100 * parte["preco"] / parte["preco"].iloc[0], mode="lines",
-                                 name=nome_ativo.get(ativo, ativo), line=dict(width=2, color=COR_ATIVO.get(ativo, CINZA)),
+                                 name=nome_ativo.get(ativo, ativo), line=dict(width=2, color=cor_ativo(ativo)),
                                  hovertemplate="%{y:.1f}"), secondary_y=False)
     marcar_eventos(fig, eventos[(eventos["data_hora_local"] >= ini) & (eventos["data_hora_local"] <= fim + timedelta(days=1))],
                    evento_id)
