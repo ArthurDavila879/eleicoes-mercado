@@ -365,3 +365,18 @@ Decisões tomadas de forma autônoma durante a construção do projeto, com a ju
   projeto, e estava desatualizado. O histórico fica nos commits e neste arquivo.
 - **About do GitHub** (descrição, site e tópicos) e **GitHub Pages** (fonte: GitHub Actions)
   configurados pela API.
+
+## Exceção no teste de plausibilidade: MGLU3 em 26/10/2026 (30/10/2026)
+- **O que aconteceu:** a partir de 26/10 a coleta passou a falhar no passo de verificação, porque
+  `assert_retornos_plausiveis` barrou o log-retorno diário de −0,87 da MGLU3 (12,69 → 5,30) no
+  1º pregão após o 2º turno. Isso pulava 38 nós do `dbt build`.
+- **Verificação:** a abertura (6,35) era quase a metade do fechamento anterior, com o volume
+  dobrado, o que sugeria um desdobramento 2:1 não ajustado. Não há desdobramento nem outro
+  evento corporativo no RI da companhia (os últimos comunicados de outubro, de 13/10 e 19/10,
+  são esclarecimentos à CVM/B3), e o último desdobramento registrado é de 2024. O InfoMoney
+  registra a queda de 58,23% em 26/10/2026 (varejo após a reeleição, com os juros futuros em
+  disparada), a mesma variação dos dados do Yahoo. É um movimento real.
+- **Decisão:** a exceção é explícita, por ativo e data (`excecoes` no teste), com a fonte em
+  comentário. O limite de 0,7 não mudou, para não afrouxar a checagem dos demais ativos. O dado
+  entra nos modelos sem ajuste, porque é a reação que o estudo mede.
+
