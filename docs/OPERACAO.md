@@ -2,6 +2,11 @@
 
 > Parte do projeto [eleicoes-mercado](../README.md).
 
+> **Projeto concluído (13/11/2026).** A base de dados está fechada e os workflows **Coleta de
+> dados** e **Documentação dbt** estão desativados em **Actions**; só o de testes continua ativo.
+> O dashboard funciona sem coleta (reconstrói o banco a partir dos Parquet versionados). As
+> instruções abaixo valem para reativar a coleta ou reaproveitar o projeto em outra eleição.
+
 ## Deploy do dashboard (Streamlit Community Cloud)
 
 O app não precisa de etapa de build: na inicialização, se o DuckDB não existe ou está

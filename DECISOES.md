@@ -380,3 +380,20 @@ Decisões tomadas de forma autônoma durante a construção do projeto, com a ju
   comentário. O limite de 0,7 não mudou, para não afrouxar a checagem dos demais ativos. O dado
   entra nos modelos sem ajuste, porque é a reação que o estudo mede.
 
+
+## Encerramento do projeto (13/11/2026)
+- **Coleta final e base fechada:** uma última coleta local (Docker, Python 3.12) trouxe os dados
+  até 13/11/2026, o que completa todas as janelas do 2º turno, inclusive a [-5,+5] (até 03/11).
+  Os workflows de coleta e de documentação já estavam desativados desde 30/10; ficam assim. A
+  base versionada em `data/bruto/` é a definitiva e o dashboard a reconstrói sem rede.
+- **GDELT:** na coleta final, a API recusou todas as tentativas para um dos dois candidatos
+  (limite de requisições) e o volume dele fica sem os últimos dias. Como o GDELT é só descritivo
+  e não entra em nenhum teste, não houve nova tentativa.
+- **Resultados do 2º turno** em `docs/RESULTADOS.md`, com o registro da execução no fim do
+  `PRE_REGISTRO.md`. Os números do 1º turno publicados em 23/10 não foram alterados (regra do
+  pré-registro); na base final, CAR, t e p-valor do 1º turno são idênticos, e só os p-valores do
+  placebo mudam na 3ª casa, porque as datas que tocam a janela do 2º turno saíram do sorteio.
+- **Dólar implícito × oficial no 2º turno:** o "oficial no fim de semana" (`BRL=X` de sexta 17h
+  a segunda 10h) dá só +0,2%, porque na série horária do Yahoo o salto do câmbio aparece só na
+  barra das 10h às 11h (no 1º turno apareceu na das 9h). O cálculo segue a definição de sempre;
+  não foi ajustado depois de ver o dado.

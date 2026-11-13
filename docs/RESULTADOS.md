@@ -1,16 +1,174 @@
 # Resultados detalhados
 
-> Parte do projeto [eleicoes-mercado](../README.md). Números da execução de 23/10/2026; os
-> atualizados estão no dashboard e nas tabelas `marts.*` do DuckDB.
+> Parte do projeto [eleicoes-mercado](../README.md). Versão final: execução de 13/11/2026,
+> com a base fechada (dados até 13/11/2026). As seções do 1º turno mantêm os números publicados
+> em 23/10/2026, antes do 2º turno, como manda o pré-registro.
 
 *** p<0,01 · ** p<0,05 · * p<0,10 · n.s. não significativo. Leitura descritiva, não causal.
 
+## 2º turno de 2026 — análise pré-registrada
+
+Evento #2: domingo, 25/10/2026, 17h; dia 0 = segunda, 26/10. Análise feita exatamente como
+fixada em [`PRE_REGISTRO.md`](../PRE_REGISTRO.md) (tag `pre-registro-2turno`, 23/10/2026).
+Todas as janelas estão completas. No USD/BRL, CAR > 0 = real **mais fraco**.
+
+### Janela diária [-1,+3] pregões (23/10 a 29/10) — família principal
+
+| Ativo | Modelo | CAR | Erro-padrão | t | p-valor | | Holm |
+|---|---|---:|---:|---:|---:|:-:|---:|
+| Ibovespa | mercado global — EEM (β=0,13) | −17,28% | 2,24 p.p. | −8,49 | <0,0001 | *** | <0,0001 |
+| Real — USD/BRL (Yahoo) | BRL − controles | +7,44% | 1,36 p.p. | 5,28 | <0,0001 | *** | <0,0001 |
+| Banco do Brasil ON | mercado (β=1,27) | −12,88% | 2,84 p.p. | −4,85 | <0,0001 | *** | <0,0001 |
+| Vale ON | mercado (β=0,80) | +13,82% | 3,20 p.p. | 4,04 | 0,0001 | *** | 0,0003 |
+| Itaú Unibanco PN | mercado (β=1,19) | +2,74% | 2,03 p.p. | 1,33 | 0,186 | n.s. | 0,372 |
+| Petrobras PN | mercado (β=0,43) | −2,41% | 3,73 p.p. | −0,65 | 0,514 | n.s. | 0,514 |
+| *Real — USD/BRL (BCB), checagem* | BRL − controles | +4,78% | 1,23 p.p. | 3,80 | 0,0002 | *** | — |
+
+**Resultado confirmatório:** pelo critério pré-registrado (p < 0,05 bicaudal, Holm sobre as seis
+hipóteses), há retorno anormal significativo no **Ibovespa, no real, no Banco do Brasil e na
+Vale**; **Itaú e Petrobras** não diferem do previsto. O dólar do BCB confirma o do Yahoo.
+
+Preços brutos, para referência: o Ibovespa caiu 13,9% em 26/10 (205.083 → 176.608 pontos) e o
+dólar do BCB subiu 9,2% (5,0377 → 5,5007), enquanto o EEM ficou estável (−0,3%) e as moedas de
+controle quase não se moveram (MXN −0,5%, ZAR +0,3%).
+
+### Janela horária [-2h,+6h] (sexta 15h–16h e segunda 10h–15h, horário de Brasília)
+
+| Ativo | CAR | t | p-valor | |
+|---|---:|---:|---:|:-:|
+| Ibovespa (média constante) | −14,81% | −12,55 | <0,0001 | *** |
+| Vale ON | +18,19% | 11,46 | <0,0001 | *** |
+| Banco do Brasil ON | −11,19% | −7,08 | <0,0001 | *** |
+| Itaú Unibanco PN | +3,98% | 4,06 | <0,0001 | *** |
+| Petrobras PN | +3,69% | 2,05 | 0,041 | ** |
+| Real — USD/BRL (Yahoo) | +10,45% | 17,64 | <0,0001 | *** |
+
+Secundária pelo pré-registro: mostra que a reação se concentra na abertura de segunda. Itaú e
+Petrobras, não significativos na janela diária, são significativos na horária: o movimento
+relativo das primeiras horas não persistiu até 29/10.
+
+### Robustez — janela diária [-1,+3]
+
+P-valores bicaudais. Placebo com 202 datas por ação (188 no `BRL=X`) na versão principal e
+~870–910 na versão "qualquer dia"; o menor p-valor empírico possível é 1/203 ≈ 0,005.
+
+| Ativo | t (principal) | Patell | BMP | Corrado | Placebo | Placebo (qualquer dia) |
+|---|---:|---:|---:|---:|---:|---:|
+| Ibovespa | <0,0001 | <0,0001 | 0,251 | 0,035 | 0,005 | 0,001 |
+| Real — USD/BRL (Yahoo) | <0,0001 | <0,0001 | 0,341 | 0,294 | 0,005 | 0,001 |
+| Banco do Brasil ON | <0,0001 | 0,014 | 0,516 | 0,741 | 0,010 | 0,008 |
+| Vale ON | 0,0001 | **0,056** | 0,569 | 0,730 | 0,005 | 0,001 |
+| Itaú Unibanco PN | 0,186 | 0,489 | 0,535 | 0,588 | 0,123 | 0,125 |
+| Petrobras PN | 0,514 | 0,681 | 0,609 | 0,531 | 0,453 | 0,448 |
+| Real — USD/BRL (BCB) | 0,0002 | 0,0002 | 0,624 | 0,730 | 0,010 | 0,005 |
+
+**Onde os testes discordam (regra 7 do pré-registro):**
+
+- **Vale:** significativa pelo t, pelo placebo (nas duas versões) e pelo Holm, mas **não** pelo
+  Patell a 5% (p = 0,056). O Patell corrige o erro de previsão, que é grande num dia em que o
+  Ibovespa (a referência do modelo) cai 14%: o AR da Vale depende de extrapolar o β para um
+  movimento do índice muito fora da amostra de estimação.
+- **BMP e Corrado** só rejeitam no Corrado do Ibovespa (0,035). Como no 1º turno, era esperado:
+  o BMP usa 5 SAR (4 graus de liberdade) e o Corrado tem estatística limitada quando a reação se
+  concentra num único dia. São checagens de volatilidade inflada, não testes com poder aqui.
+- O placebo coloca Ibovespa, Vale e real fora de toda a distribuição de 202 datas sem evento.
+
+### Sensibilidade de janela
+
+| Ativo | [0,0] | [0,+1] | [-1,+3] (principal) | [-5,+5] |
+|---|---:|---:|---:|---:|
+| Ibovespa | −13,85% *** | −14,41% *** | −17,28% *** | −19,12% *** |
+| Vale ON | +17,22% *** | +15,27% *** | +13,82% *** | +8,98% * |
+| Banco do Brasil ON | −14,58% *** | −14,51% *** | −12,88% *** | −10,39% ** |
+| Petrobras PN | −2,10% n.s. | −3,93% * | −2,41% n.s. | −7,39% n.s. |
+| Itaú Unibanco PN | +3,07% *** | +2,39% * | +2,74% n.s. | +3,02% n.s. |
+| Real — USD/BRL (Yahoo) | +6,91% *** | +6,36% *** | +7,44% *** | +7,00% *** |
+| Real — USD/BRL (BCB) | +7,78% *** | +4,41% *** | +4,78% *** | +5,70% *** |
+
+Ibovespa, Banco do Brasil e real têm o mesmo sinal e significância em todas as janelas. A Vale
+perde força em [-5,+5] (p < 0,10): parte do ganho relativo se desfez até 03/11. Itaú é
+significativo só no dia 0. A [-5,+5] atravessa Finados (02/11, sem pregão na B3) e o fim do
+horário de verão americano (01/11), como previsto no pré-registro.
+
+### Análises adicionais (Fase 2)
+
+**Carteiras long-short** (estatal − privada; CAR > 0 = a estatal foi melhor):
+
+| Carteira | Freq. | CAR | t | p (t) | Patell | BMP | Corrado | Placebo |
+|---|---|---:|---:|---:|---:|---:|---:|---:|
+| Banco do Brasil − Itaú | diária | −15,20% | −5,33 | <0,0001 | 0,007 | 0,510 | 0,949 | 0,005 |
+| Petrobras − PRIO | diária | −3,34% | −0,99 | 0,327 | 0,422 | 0,321 | 0,229 | 0,429 |
+| Banco do Brasil − Itaú | horária | −14,58% | −8,28 | <0,0001 | 0,039 | 0,732 | 0,065 | 0,002 |
+| Petrobras − PRIO | horária | −2,68% | −1,61 | 0,108 | 0,411 | 0,814 | 0,483 | 0,112 |
+
+**Volatilidade e volume** (média na janela [-1,+3] contra o normal; dia 0 = 26/10):
+
+| Ativo | Volatilidade: média na janela | dia 0 | p | Volume: média na janela | dia 0 | p |
+|---|---:|---:|---:|---:|---:|---:|
+| Ibovespa | +371% | +39.495% | 0,0002 | +163% | +411% | <0,0001 |
+| Petrobras PN | +233% | +5.240% | 0,011 | +83% | +258% | 0,0007 |
+| Vale ON | +56% | +1.764% | 0,287 | +126% | +424% | <0,0001 |
+| Itaú Unibanco PN | +307% | +19.169% | 0,0007 | +116% | +495% | <0,0001 |
+| Banco do Brasil ON | +518% | +91.062% | <0,0001 | +314% | +1.083% | <0,0001 |
+| Real — USD/BRL (Yahoo) | +646% | +24.068% | <0,0001 | — | — | — |
+
+Os saltos de abertura de 26/10 fazem a variância realizada do dia 0 chegar a centenas de vezes
+a normal; o volume do Banco do Brasil foi ~12 vezes o normal. Como no 1º turno, volatilidade e
+volume são persistentes, o que deixa o t otimista; o tamanho do efeito é o número informativo.
+
+**Juros (Tesouro Direto):** omitidos, como registrado antes da votação (desvio 5 do
+pré-registro: fonte inacessível).
+
+### Exploratório: ações adicionais e modelo multifatorial
+
+Fora do plano confirmatório (desvios 8–9 do pré-registro); não entram no Holm.
+
+| Ativo | CAR diário [-1,+3] | p (t) | p (Patell) | β | CAR horário |
+|---|---:|---:|---:|---:|---:|
+| Magazine Luiza ON | −40,33% *** | <0,0001 | 0,0008 | 2,10 | −39,60% *** |
+| MRV ON | −33,46% *** | <0,0001 | <0,0001 | 1,57 | −30,05% *** |
+| Cogna ON | −27,50% *** | <0,0001 | <0,0001 | 1,58 | −21,36% *** |
+| Bradesco PN | −12,34% *** | <0,0001 | <0,0001 | 1,20 | −8,29% *** |
+| Sabesp ON | −1,29% n.s. | 0,659 | 0,593 | 1,28 | −6,05% *** |
+| Petrobras ON | −1,80% n.s. | 0,665 | 0,743 | 0,41 | +4,79% ** |
+| Spread Petrobras ON − PN | +0,63% n.s. | 0,515 | 0,864 | −0,02 | +1,06% * |
+| Eletrobras ON (AXIA3) | +4,57% * | 0,081 | 0,552 | 1,35 | −2,46% ** |
+| Cemig PN | +5,04% ** | 0,021 | 0,100 | 1,03 | +2,77% *** |
+
+- As maiores quedas relativas ficaram com varejo, construção e educação (setores domésticos e
+  sensíveis a juros), que caíram muito além do que o β alto já previa para um dia de −14% do
+  índice. A queda de 58% da MGLU3 em 26/10 foi conferida e é real (ver `DECISOES.md`).
+- **Multifatorial:** com o Brent no modelo, a Petrobras PN vai de −2,41% para +0,30% e a ON de
+  −1,80% para +1,24% (ambas n.s.; o Brent explica R² de 0,07 → 0,52). A Vale quase não muda
+  (+13,82% → +13,44%, ***; o minério acrescenta 0,01 ao R²).
+
+### Dólar implícito no bitcoin
+
+No 2º turno, o dólar implícito (BTCBRL ÷ BTCUSDT) subiu **10,3%** entre o fim da votação e
+segunda às 10h (z = +16,9; o maior desvio dos 311 fins de semana do placebo). Na série horária
+do Yahoo, o `BRL=X` ainda não tinha se movido até 10h (+0,2% no fim de semana): o salto só
+aparece na barra das 10h às 11h, de modo que, desta vez, o bitcoin antecipou praticamente toda
+a reação do câmbio. O volume de bitcoin na janela foi de 309 BTC, cerca de três vezes um fim de
+semana comum (mediana de 98). A tabela com todos os eventos está na seção
+[Dólar implícito no bitcoin](#dólar-implícito-no-bitcoin-1).
+
+### Leitura (descritiva, não causal)
+
+- No pregão seguinte ao 2º turno, o mercado brasileiro teve uma reação forte e na direção
+  oposta à do 1º turno: Ibovespa −17% anormal em cinco pregões, real ~5–7% mais fraco que os
+  pares emergentes, Banco do Brasil abaixo e Vale acima do previsto pelo índice.
+- Os movimentos são específicos do Brasil: EEM e moedas de controle ficaram estáveis no mesmo
+  dia, então os modelos de retorno normal quase não descontam nada.
+- Nas ações, o AR é relativo ao Ibovespa: num dia de −14% do índice, a Vale (exportadora, com
+  receita em dólar) caiu bem menos do que o β previa, e o Banco do Brasil caiu bem mais.
+- O estudo mede preços; nenhuma leitura é feita em termos de candidatos.
+
 ## 1º turno de 2026 — estudo principal
 
-Execução de 23/10/2026, com dados até 22/10/2026. Só o **1º turno** (evento #1,
-04/10/2026 17h; dia 0 = segunda, 05/10) tem janela completa. O **2º turno** (25/10) aparece
-como `aguardando_dados` e será calculado sozinho quando a coleta automática trouxer os pregões
-de 26/10 em diante. Os números atualizados estão no dashboard (`marts.resultados_eventos`).
+Execução de 23/10/2026, com dados até 22/10/2026 (números publicados antes do 2º turno e
+mantidos sem alteração). Evento #1, 04/10/2026 17h; dia 0 = segunda, 05/10. Na base final, CAR,
+t e p-valor do 1º turno são idênticos; só os p-valores do placebo mudam na 3ª casa, porque as
+datas que tocam a janela do 2º turno passaram a ser excluídas do sorteio.
 
 ### Janela diária [-1,+3] pregões (02/10 a 08/10)
 
@@ -150,43 +308,51 @@ CAR diário [-1,+3].
 
 Mesma metodologia em todos os eventos.
 
-| Ativo | 2014 · 1º | 2014 · 2º | 2018 · 1º | 2018 · 2º | 2022 · 1º | 2022 · 2º | 2026 · 1º |
-|---|---:|---:|---:|---:|---:|---:|---:|
-| Ibovespa | +5,47% ** | +0,13% n.s. | +2,71% n.s. | +2,88% n.s. | +6,28% *** | −0,55% n.s. | +10,72% *** |
-| Petrobras PN | +6,53% ** | −13,41% *** | +5,07% n.s. | −6,06% n.s. | +1,77% n.s. | −18,08% *** | +7,40% * |
-| Vale ON | −5,62% * | −14,05% *** | −5,52% n.s. | +1,46% n.s. | −1,30% n.s. | −1,37% n.s. | −11,69% *** |
-| Itaú Unibanco PN | −0,83% n.s. | +5,64% *** | +0,51% n.s. | −2,28% n.s. | −2,42% n.s. | +0,26% n.s. | −0,03% n.s. |
-| Banco do Brasil ON | +12,68% *** | +4,17% n.s. | +6,38% * | −1,09% n.s. | −3,32% n.s. | −1,82% n.s. | −7,42% *** |
-| Real — USD/BRL (Yahoo) | −3,75% * | −3,16% n.s. | −2,55% n.s. | −0,98% n.s. | −3,18% n.s. | −5,89% *** | −2,82% ** |
-| Real — USD/BRL (BCB) | −3,37% n.s. | −2,92% n.s. | −4,23% ** | −0,82% n.s. | −3,45% * | −5,05% ** | −2,66% ** |
+| Ativo | 2014 · 1º | 2014 · 2º | 2018 · 1º | 2018 · 2º | 2022 · 1º | 2022 · 2º | 2026 · 1º | 2026 · 2º |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| Ibovespa | +5,47% ** | +0,13% n.s. | +2,71% n.s. | +2,88% n.s. | +6,28% *** | −0,55% n.s. | +10,72% *** | −17,28% *** |
+| Petrobras PN | +6,53% ** | −13,41% *** | +5,07% n.s. | −6,06% n.s. | +1,77% n.s. | −18,08% *** | +7,40% * | −2,41% n.s. |
+| Vale ON | −5,62% * | −14,05% *** | −5,52% n.s. | +1,46% n.s. | −1,30% n.s. | −1,37% n.s. | −11,69% *** | +13,82% *** |
+| Itaú Unibanco PN | −0,83% n.s. | +5,64% *** | +0,51% n.s. | −2,28% n.s. | −2,42% n.s. | +0,26% n.s. | −0,03% n.s. | +2,74% n.s. |
+| Banco do Brasil ON | +12,68% *** | +4,17% n.s. | +6,38% * | −1,09% n.s. | −3,32% n.s. | −1,82% n.s. | −7,42% *** | −12,88% *** |
+| Real — USD/BRL (Yahoo) | −3,75% * | −3,16% n.s. | −2,55% n.s. | −0,98% n.s. | −3,18% n.s. | −5,89% *** | −2,82% ** | +7,44% *** |
+| Real — USD/BRL (BCB) | −3,37% n.s. | −2,92% n.s. | −4,23% ** | −0,82% n.s. | −3,45% * | −5,05% ** | −2,66% ** | +4,78% *** |
+
+O 2º turno de 2026 tem o maior CAR em módulo do Ibovespa e do real (Yahoo) em todo o período,
+nos dois casos com sinal oposto ao de todos os eventos anteriores com reação significativa (no
+dólar do BCB, o maior em módulo continua sendo o do 2º turno de 2022, −5,05%).
 
 ## Análise agregada entre eleições
 
-Todos os eventos com dados (7); p-valores bicaudais.
+Todos os 8 eventos; p-valores bicaudais.
 
 | Ativo | CAAR | CAR > 0 | t agregado | t transversal | qui² sem direção |
 |---|---:|---:|---:|---:|---:|
-| Ibovespa | +3,89% | 6/7 | <0,0001 | 0,035 | <0,0001 |
-| Petrobras PN | −2,88% | 4/7 | 0,105 | 0,503 | <0,0001 |
-| Vale ON | −5,59% | 1/7 | <0,0001 | 0,047 | <0,0001 |
-| Itaú Unibanco PN | +0,09% | 3/7 | 0,910 | 0,932 | 0,151 |
-| Banco do Brasil ON | +1,18% | 3/7 | 0,377 | 0,656 | 0,0008 |
-| Real — USD/BRL (Yahoo) | −3,20% | 0/7 | 0,0001 | 0,0013 | 0,0055 |
-| Real — USD/BRL (BCB) | −3,22% | 0/7 | <0,0001 | 0,0007 | 0,0023 |
+| Ibovespa | +0,97% | 6/8 | 0,250 | 0,765 | <0,0001 |
+| Petrobras PN | −2,82% | 4/8 | 0,082 | 0,446 | <0,0001 |
+| Vale ON | −3,36% | 2/8 | 0,0086 | 0,303 | <0,0001 |
+| Itaú Unibanco PN | +0,42% | 4/8 | 0,574 | 0,668 | 0,130 |
+| Banco do Brasil ON | −0,70% | 3/8 | 0,565 | 0,814 | <0,0001 |
+| Real — USD/BRL (Yahoo) | −1,93% | 1/8 | 0,011 | 0,206 | <0,0001 |
+| Real — USD/BRL (BCB) | −2,26% | 1/8 | 0,0012 | 0,074 | <0,0001 |
 
 Por turno (dashboard e `fct_caar_eventos`):
 
 - **1º turnos (4):** Ibovespa +6,3% (4 de 4 positivos), real −3,1% (4 de 4 com o real mais forte
-  que os pares), Vale −6,1%.
-- **2º turnos (3):** as médias se cancelam mais. A Petrobras tem CAAR de −12,7%, mas o t
-  transversal dá p = 0,077 com só 3 eventos; no Ibovespa o CAAR fica perto de zero.
+  que os pares), Vale −6,1%. Sem mudança: o 2º turno de 2026 não entra neste grupo.
+- **2º turnos (4):** Ibovespa −4,1% (2 de 4 positivos; t agregado p = 0,0007, mas t transversal
+  p = 0,47, porque o resultado vem quase todo de 2026). A Petrobras tem CAAR de −10,2% (0 de 4
+  positivos; t transversal p = 0,072). O real tem CAAR de −0,8%: três 2º turnos com o real mais
+  forte e o de 2026 com o real bem mais fraco.
 
 **Leitura (descritiva):** a análise agregada distingue duas coisas. Primeiro, se há reação
 anormal em qualquer direção: o qui-quadrado rejeita para Ibovespa, Petrobras, Vale, Banco do
-Brasil e real. Segundo, se a reação vai sempre para o mesmo lado: o CAAR com sinal só é robusto
-(t agregado e transversal) para o Ibovespa, a Vale e o real. O real se valorizou contra os pares
-emergentes na janela de **todas** as sete eleições. Com 7 eventos, o t transversal tem pouco
-poder, e cada eleição continua sendo um caso com contexto próprio.
+Brasil e real, e o 2º turno de 2026 reforça isso. Segundo, se a reação vai sempre para o mesmo
+lado: até o 1º turno de 2026, o real tinha se valorizado contra os pares nas 7 eleições e o
+Ibovespa tinha subido em 6 de 7; o 2º turno de 2026 quebrou as duas regularidades. Com 8
+eventos, o CAAR com sinal só segue robusto (t agregado e transversal a 10%) para o real do BCB;
+o do Ibovespa vai a +1,0% (n.s.). A conclusão que sobrevive é que eleições presidenciais
+costumam mover o mercado brasileiro de forma anormal, **mas a direção depende de cada eleição**.
 
 ## Dólar implícito no bitcoin
 
@@ -194,12 +360,15 @@ USD/BRL; negativo = real mais forte.
 
 | Evento | Sexta 17h → domingo (pré) | Domingo → segunda 10h (reação) | z da reação | p empírico | Fim de semana: implícito × oficial |
 |---|---:|---:|---:|---:|---:|
-| 2022 · 1º turno | −0,09% | −1,94% | −3,4 | 0,016 | −2,02% × — |
-| 2022 · 2º turno | −0,49% | +1,32% | +2,3 | 0,045 | +0,82% × — |
-| 2026 · 1º turno | +1,02% | −4,42% | −7,9 | 0,003 | −3,45% × −4,28% |
+| 2022 · 1º turno | −0,09% | −1,94% | −3,4 | 0,019 | −2,02% × — |
+| 2022 · 2º turno | −0,49% | +1,32% | +2,3 | 0,048 | +0,83% × — |
+| 2026 · 1º turno | +1,02% | −4,42% | −7,8 | 0,003 | −3,45% × −4,28% |
+| 2026 · 2º turno | −0,46% | +10,32% | +16,9 | 0,003 | +9,82% × +0,20% |
 
-Placebo com 309 fins de semana; desvio-padrão da reação num fim de semana comum: 0,57%. Em 2022
-não há barras de 1h do `BRL=X` para comparar (o Yahoo só guarda ~2 anos).
+Placebo com 311 fins de semana (base final); desvio-padrão da reação num fim de semana comum:
+0,58%. Em 2022 não há barras de 1h do `BRL=X` para comparar (o Yahoo só guarda ~2 anos). No 2º
+turno de 2026, o `BRL=X` horário só se moveu depois das 10h (ver a seção do 2º turno), por isso o
+oficial do fim de semana fica em +0,2%.
 
 - No 1º turno de 2026, o dólar implícito caiu 4,4% entre o fim da votação e a abertura de
   segunda. É o menor p-valor possível com 309 fins de semana, e o movimento tem a mesma direção

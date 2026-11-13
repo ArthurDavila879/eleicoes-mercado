@@ -182,3 +182,22 @@ confirmatório acima (não entram na família do Holm nem mudam o teste principa
    PETR3 − PETR4, modelos multifatoriais (PETR4/PETR3 com Ibovespa + Brent; VALE3 com Ibovespa +
    minério de ferro) e dólar implícito no bitcoin (BTCBRL/BTCUSDT, domingo 17h → segunda 10h).
    Todos com hipóteses bicaudais e a mesma metodologia dos demais ativos.
+
+## Execução (13/11/2026)
+
+A análise foi executada com dados até 13/11/2026 (janelas diária, horária e [-5,+5] completas).
+Resultados em [`docs/RESULTADOS.md`](docs/RESULTADOS.md), seção "2º turno de 2026".
+
+**Nenhum desvio do plano depois da votação.** A tag `pre-registro-2turno` congela o plano; a
+implementação das Fases 1–2 e das análises exploratórias foi commitada depois da tag, ainda em
+23/10/2026, antes da votação (último commit de código antes do evento: `f4d46c2`). Depois da
+votação, a única mudança de código foi a do item 10, que não toca nenhum modelo. Registros de
+execução, que não alteram o plano:
+
+10. **Exceção no teste de plausibilidade dos dados** (30/10/2026): o log-retorno de −0,87 da
+    MGLU3 em 26/10 foi verificado como movimento real e liberado por exceção explícita (detalhes
+    em `DECISOES.md`). A MGLU3 é exploratória (item 9) e não entra na família principal; o dado
+    entra sem ajuste.
+11. **Discordância entre testes** (seção 7): a Vale é significativa pelo t, pelo placebo e pelo
+    Holm, mas não pelo Patell a 5% (p = 0,056). Reportado em `docs/RESULTADOS.md`, sem escolher o
+    teste mais favorável.
